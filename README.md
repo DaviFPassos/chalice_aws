@@ -17,6 +17,9 @@ rotas novas no mesmo app, para que todos os exemplos fiquem disponíveis em um �
 ├── .chalice/config.json   # configuração do Chalice (app_name, stages)
 ├── app.py                 # código da API
 ├── requirements.txt       # dependências que vão para a Lambda (vazio)
+├── requirements-dev.txt   # ferramentas de desenvolvimento (chalice, httpie, pytest)
+├── pytest.ini             # configuração do pytest
+├── tests/test_app.py      # testes automatizados das rotas
 └── README.md
 ```
 
@@ -37,7 +40,7 @@ aws sts get-caller-identity
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install chalice httpie
+pip install -r requirements-dev.txt
 ```
 
 ## Executar localmente
@@ -46,6 +49,16 @@ pip install chalice httpie
 chalice local          # sobe em http://127.0.0.1:8000
 curl http://127.0.0.1:8000/
 ```
+
+## Testes
+
+```bash
+python -m pytest -v
+```
+
+Os testes usam o `chalice.test.Client`, que executa as rotas em memória (sem servidor e sem AWS).
+Como `application/json` está em `binary_types` (rota `/gzip`), as requisições de teste enviam
+`Accept: application/json`.
 
 ## Deploy na AWS
 
