@@ -1,6 +1,6 @@
 from urllib.parse import parse_qs
 
-from chalice import Chalice, BadRequestError, NotFoundError
+from chalice import Chalice, BadRequestError, NotFoundError, Response
 
 app = Chalice(app_name='helloworld')
 app.debug = True
@@ -57,3 +57,10 @@ def myobject(key):
 @app.route('/introspect')
 def introspect():
     return app.current_request.to_dict()
+
+
+@app.route('/custom-response')
+def custom_response():
+    return Response(body='hello world!',
+                    status_code=200,
+                    headers={'Content-Type': 'text/plain'})
