@@ -2,7 +2,7 @@ import gzip
 import json
 from urllib.parse import parse_qs
 
-from chalice import Chalice, BadRequestError, NotFoundError, Response
+from chalice import Chalice, BadRequestError, NotFoundError, Response, CORSConfig
 
 app = Chalice(app_name='helloworld')
 app.debug = True
@@ -15,6 +15,19 @@ CITIES_TO_STATE = {
 
 OBJECTS = {
 }
+
+_ALLOWED_ORIGINS = set([
+    'http://allowed1.example.com',
+    'http://allowed2.example.com',
+])
+
+cors_config = CORSConfig(
+    allow_origin='https://foo.example.com',
+    allow_headers=['X-Special-Header'],
+    max_age=600,
+    expose_headers=['X-Special-Header'],
+    allow_credentials=True
+)
 
 
 @app.route('/')
@@ -80,3 +93,33 @@ def gzip_response():
     return Response(body=payload,
                     status_code=200,
                     headers=custom_headers)
+
+
+@app.route('/supports-cors', methods=['PUT'], cors=True)
+def supports_cors():
+    return {}
+
+
+@app.route('/custom-cors', methods=['GET'], cors=cors_config)
+def supports_custom_cors():
+    return {'cors': True}
+
+
+@app.route('/cors_multiple_origins', methods=['GET', 'OPTIONS'])
+def supports_cors_multiple_origins():
+    method = app.current_request.method
+    if method == 'OPTIONS':
+        headers = {
+            'Access-Control-Allow-Method': 'GET,OPTIONS',
+            'Access-Control-Allow-Origin': ','.join(_ALLOWED_ORIGINS),
+            'Access-Control-Allow-Headers': 'X-Some-Header',
+        }
+        origin = app.current_request.headers.get('origin', '')
+        if origin in _ALLOWED_ORIGINS:
+            headers.update({'Access-Control-Allow-Origin': origin})
+        return Response(
+            body=None,
+            headers=headers,
+        )
+    elif method == 'GET':
+        return 'Foo'
