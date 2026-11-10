@@ -1,3 +1,5 @@
+from urllib.parse import parse_qs
+
 from chalice import Chalice, BadRequestError, NotFoundError
 
 app = Chalice(app_name='helloworld')
@@ -15,6 +17,15 @@ OBJECTS = {
 @app.route('/')
 def index():
     return {'hello': 'world'}
+
+
+@app.route('/', methods=['POST'],
+           content_types=['application/x-www-form-urlencoded'])
+def index_form():
+    parsed = parse_qs(app.current_request.raw_body.decode())
+    return {
+        'states': parsed.get('states', [])
+    }
 
 
 @app.route('/cities/{city}')
