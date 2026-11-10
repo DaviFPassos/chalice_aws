@@ -1,9 +1,12 @@
+import gzip
+import json
 from urllib.parse import parse_qs
 
 from chalice import Chalice, BadRequestError, NotFoundError, Response
 
 app = Chalice(app_name='helloworld')
 app.debug = True
+app.api.binary_types.append('application/json')
 
 CITIES_TO_STATE = {
     'seattle': 'WA',
@@ -64,3 +67,16 @@ def custom_response():
     return Response(body='hello world!',
                     status_code=200,
                     headers={'Content-Type': 'text/plain'})
+
+
+@app.route('/gzip')
+def gzip_response():
+    blob = json.dumps({'hello': 'world'}).encode('utf-8')
+    payload = gzip.compress(blob)
+    custom_headers = {
+        'Content-Type': 'application/json',
+        'Content-Encoding': 'gzip'
+    }
+    return Response(body=payload,
+                    status_code=200,
+                    headers=custom_headers)
