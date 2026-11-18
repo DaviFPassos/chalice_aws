@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Envia as imagens de testes/imagens/ para a API implantada e salva os resultados.
 
-Uso:
+Uso (o código de acesso vem da variável de ambiente CODIGO_ACESSO):
+    export CODIGO_ACESSO=XXXX-XXXX-XXXX
     python scripts/testar_api.py https://<id>.execute-api.sa-east-1.amazonaws.com/api/
     python scripts/testar_api.py <URL> caminho/foto1.jpg caminho/foto2.png
 
@@ -11,6 +12,7 @@ Para cada imagem são gravados em testes/resultados/:
     <nome>_pronuncia_original.mp3  pronúncia do texto original (se houver texto)
 """
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -23,11 +25,15 @@ PASTA_RESULTADOS = RAIZ / 'testes' / 'resultados'
 TIPOS = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png'}
 
 
+CODIGO = os.environ.get('CODIGO_ACESSO', '')
+
+
 def requisitar(url, dados=None, tipo=None):
     req = urllib.request.Request(url, data=dados, method='POST' if dados else 'GET')
     if tipo:
         req.add_header('Content-Type', tipo)
     req.add_header('Accept', 'application/json')
+    req.add_header('X-Codigo-Acesso', CODIGO)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return resp.status, json.loads(resp.read())
@@ -71,6 +77,8 @@ def testar(base, imagem):
 def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
+    if not CODIGO:
+        sys.exit('Defina o código de acesso: export CODIGO_ACESSO=XXXX-XXXX-XXXX')
     base = sys.argv[1].rstrip('/') + '/'
     imagens = [Path(p) for p in sys.argv[2:]] or sorted(
         p for p in PASTA_IMAGENS.iterdir() if p.suffix.lower() in TIPOS)

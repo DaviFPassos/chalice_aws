@@ -15,6 +15,11 @@ IDIOMA_DESTINO = 'pt'
 CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://davifpassos.github.io')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://davifpassos.github.io/chalice_aws/')
 
+# Código de acesso (valor guardado no SSM Parameter Store, nunca no repositório)
+PARAMETRO_CODIGO_ACESSO = os.environ.get('PARAMETRO_CODIGO_ACESSO', '/leitor-placas/codigo-acesso')
+CABECALHO_CODIGO = 'X-Codigo-Acesso'
+CACHE_CODIGO_SEGUNDOS = 300
+
 # Prefixos das chaves no S3
 PREFIXO_UPLOADS = 'uploads/'
 PREFIXO_RESULTADOS = 'resultados/'

@@ -8,7 +8,8 @@
     "LIMITE_ENVIOS_DIA": "30",
     "LIMITE_ENVIOS_MES": "300",
     "CORS_ORIGIN": "https://davifpassos.github.io",
-    "FRONTEND_URL": "https://davifpassos.github.io/chalice_aws/"
+    "FRONTEND_URL": "https://davifpassos.github.io/chalice_aws/",
+    "PARAMETRO_CODIGO_ACESSO": "/leitor-placas/codigo-acesso"
   },
   "stages": {
     "dev": {

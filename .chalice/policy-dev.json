@@ -38,6 +38,14 @@
         "polly:SynthesizeSpeech"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "CodigoDeAcesso",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter"
+      ],
+      "Resource": "arn:aws:ssm:*:*:parameter/leitor-placas/*"
     }
   ]
 }

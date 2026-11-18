@@ -12,15 +12,32 @@ import logging
 import re
 import uuid
 
-from chalice import (BadRequestError, Chalice, CORSConfig, NotFoundError, Response,
-                     TooManyRequestsError)
+from chalice import (BadRequestError, Chalice, ChaliceViewError, CORSConfig, NotFoundError,
+                     Response, TooManyRequestsError, UnauthorizedError)
 
-from chalicelib import armazenamento, config, cota, pipeline
+from chalicelib import acesso, armazenamento, config, cota, pipeline
 
 app = Chalice(app_name='leitor-placas')
 app.log.setLevel(logging.INFO)
 
-CORS = CORSConfig(allow_origin=config.CORS_ORIGIN, max_age=600)
+CORS = CORSConfig(allow_origin=config.CORS_ORIGIN, allow_headers=[config.CABECALHO_CODIGO],
+                  max_age=600)
+
+
+class ServicoIndisponivel(ChaliceViewError):
+    STATUS_CODE = 503
+
+
+def _exigir_codigo():
+    """Confere o código de acesso antes de qualquer gravação ou gasto de cota."""
+    codigo = app.current_request.headers.get(config.CABECALHO_CODIGO.lower())
+    try:
+        acesso.verificar(codigo)
+    except acesso.AcessoNegado:
+        raise UnauthorizedError('Código de acesso inválido.')
+    except acesso.AcessoNaoConfigurado:
+        app.log.error('Parâmetro %s não encontrado no SSM', config.PARAMETRO_CODIGO_ACESSO)
+        raise ServicoIndisponivel('Código de acesso não configurado no servidor.')
 
 ID_VALIDO = re.compile(r'^[0-9a-f]{32}$')
 ASSINATURAS = {
@@ -56,12 +73,14 @@ def index():
         'aplicacao': 'Leitor de Placas com Voz',
         'frontend': config.FRONTEND_URL,
         'rotas': ['POST /imagens', 'GET /imagens/{id}'],
+        'autenticacao': f'cabeçalho {config.CABECALHO_CODIGO} (peça o código à equipe)',
     }
 
 
 @app.route('/imagens', methods=['POST'], cors=CORS,
            content_types=['image/jpeg', 'image/png'])
 def enviar_imagem():
+    _exigir_codigo()
     dados, extensao = _ler_imagem_da_requisicao(app.current_request)
     try:
         cota.reservar()
@@ -80,6 +99,7 @@ def enviar_imagem():
 
 @app.route('/imagens/{id_imagem}', methods=['GET'], cors=CORS)
 def consultar_imagem(id_imagem):
+    _exigir_codigo()
     if not ID_VALIDO.match(id_imagem):
         raise BadRequestError('Identificador inválido.')
 
