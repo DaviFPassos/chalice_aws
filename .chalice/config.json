@@ -6,7 +6,9 @@
     "TRANSLATE_REGION": "us-east-1",
     "POLLY_REGION": "us-east-1",
     "LIMITE_ENVIOS_DIA": "30",
-    "LIMITE_ENVIOS_MES": "300"
+    "LIMITE_ENVIOS_MES": "300",
+    "CORS_ORIGIN": "https://davifpassos.github.io",
+    "FRONTEND_URL": "https://davifpassos.github.io/chalice_aws/"
   },
   "stages": {
     "dev": {

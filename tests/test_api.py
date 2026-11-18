@@ -17,11 +17,18 @@ def client(aws):
         yield c
 
 
-def test_pagina_inicial(client):
-    r = client.http.get('/')
+def test_raiz_aponta_para_o_frontend(client):
+    r = client.http.get('/', headers=JSON)
     assert r.status_code == 200
-    assert r.headers['Content-Type'].startswith('text/html')
-    assert b'Leitor de Placas' in r.body
+    assert r.json_body['frontend'].startswith('https://')
+
+
+def test_cors_liberado_so_para_o_frontend(client, aws):
+    r = client.http.post('/imagens', body=JPEG, headers={
+        **JSON, 'Content-Type': 'image/jpeg', 'Origin': 'https://davifpassos.github.io'})
+    assert r.headers['Access-Control-Allow-Origin'] == 'https://davifpassos.github.io'
+    r = client.http.get('/imagens/' + 'f' * 32, headers=JSON)
+    assert r.headers['Access-Control-Allow-Origin'] == 'https://davifpassos.github.io'
 
 
 def test_envio_jpeg_salva_no_s3(client, aws):

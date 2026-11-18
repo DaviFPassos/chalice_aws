@@ -5,18 +5,22 @@ Fluxo orientado a eventos:
   2. O upload dispara a Lambda ``ao_enviar_imagem`` (evento s3:ObjectCreated).
   3. A Lambda encadeia Rekognition -> Translate -> Polly e grava o resultado no S3.
   4. GET /imagens/{id} devolve o resultado com links temporários para os áudios.
+
+A interface é um front React (pasta frontend/), publicado no GitHub Pages.
 """
 import logging
 import re
 import uuid
 
-from chalice import (BadRequestError, Chalice, NotFoundError, Response,
+from chalice import (BadRequestError, Chalice, CORSConfig, NotFoundError, Response,
                      TooManyRequestsError)
 
-from chalicelib import armazenamento, config, cota, pagina, pipeline
+from chalicelib import armazenamento, config, cota, pipeline
 
 app = Chalice(app_name='leitor-placas')
 app.log.setLevel(logging.INFO)
+
+CORS = CORSConfig(allow_origin=config.CORS_ORIGIN, max_age=600)
 
 ID_VALIDO = re.compile(r'^[0-9a-f]{32}$')
 ASSINATURAS = {
@@ -48,11 +52,14 @@ def _ler_imagem_da_requisicao(requisicao):
 
 @app.route('/', methods=['GET'])
 def index():
-    return Response(body=pagina.HTML, status_code=200,
-                    headers={'Content-Type': 'text/html; charset=utf-8'})
+    return {
+        'aplicacao': 'Leitor de Placas com Voz',
+        'frontend': config.FRONTEND_URL,
+        'rotas': ['POST /imagens', 'GET /imagens/{id}'],
+    }
 
 
-@app.route('/imagens', methods=['POST'],
+@app.route('/imagens', methods=['POST'], cors=CORS,
            content_types=['image/jpeg', 'image/png'])
 def enviar_imagem():
     dados, extensao = _ler_imagem_da_requisicao(app.current_request)
@@ -71,7 +78,7 @@ def enviar_imagem():
     )
 
 
-@app.route('/imagens/{id_imagem}', methods=['GET'])
+@app.route('/imagens/{id_imagem}', methods=['GET'], cors=CORS)
 def consultar_imagem(id_imagem):
     if not ID_VALIDO.match(id_imagem):
         raise BadRequestError('Identificador inválido.')

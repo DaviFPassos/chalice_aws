@@ -8,7 +8,8 @@
 
 ```mermaid
 flowchart LR
-    U([Usuário<br/>navegador ou script]) -->|1. POST /imagens<br/>foto JPEG/PNG| APIGW[Amazon API Gateway]
+    U([Usuário]) --> FE[Front React<br/>GitHub Pages]
+    FE -->|1. POST /imagens<br/>foto JPEG/PNG| APIGW[Amazon API Gateway]
     APIGW --> L1[AWS Lambda<br/>api_handler]
     L1 -->|2. PutObject uploads/id.jpg| S3[(Amazon S3)]
     S3 -->|3. Evento s3:ObjectCreated| L2[AWS Lambda<br/>ao_enviar_imagem]
@@ -16,7 +17,7 @@ flowchart LR
     L2 -->|5. TranslateText ar/ru/de → pt| TR[Amazon Translate]
     L2 -->|6. SynthesizeSpeech| PO[Amazon Polly]
     L2 -->|7. resultados/id.json<br/>audios/id/*.mp3| S3
-    U -->|8. GET /imagens/id| APIGW
+    FE -->|8. GET /imagens/id| APIGW
     L1 -->|lê resultado + URL temporária| S3
     L2 -.-> CW[Amazon CloudWatch Logs]
 ```
@@ -25,8 +26,9 @@ flowchart LR
 
 | Componente | Responsabilidade |
 |---|---|
+| **Front-end React (GitHub Pages)** | Interface do usuário: escolhe/fotografa a imagem, reduz fotos grandes no navegador, envia, acompanha as etapas e toca os áudios. Hospedado fora da AWS, sem custo |
 | **Amazon API Gateway** | Expõe a API REST (`GET /`, `POST /imagens`, `GET /imagens/{id}`) |
-| **AWS Lambda `api_handler`** | Valida a imagem (formato e tamanho), confere a cota de envios (30/dia, 300/mês — ver `docs/custos.md`), grava no S3, consulta resultados e gera URLs temporárias dos áudios. Também serve a página web |
+| **AWS Lambda `api_handler`** | Valida a imagem (formato e tamanho), confere a cota de envios (30/dia, 300/mês — ver `docs/custos.md`), grava no S3, consulta resultados e gera URLs temporárias dos áudios. Responde com CORS só para o endereço do front-end |
 | **Amazon S3** | Guarda as imagens (`uploads/`), os resultados (`resultados/`) e os áudios (`audios/`). O upload em `uploads/` **gera o evento** que inicia o processamento. Bucket privado, com expiração dos objetos em 7 dias. Guarda também o contador de uso (`controle/`) |
 | **AWS Lambda `ao_enviar_imagem`** | Disparada pelo evento do S3. Encadeia os serviços de IA e grava o resultado |
 | **Amazon CloudWatch Logs** | Logs das duas Lambdas (`chalice logs`) |

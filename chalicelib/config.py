@@ -10,6 +10,11 @@ POLLY_REGION = os.environ.get('POLLY_REGION', 'us-east-1')
 
 IDIOMA_DESTINO = 'pt'
 
+# Única origem autorizada a chamar a API pelo navegador (front React no GitHub Pages).
+# Em desenvolvimento o front usa o proxy do Vite, então não precisa de CORS.
+CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://davifpassos.github.io')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://davifpassos.github.io/chalice_aws/')
+
 # Prefixos das chaves no S3
 PREFIXO_UPLOADS = 'uploads/'
 PREFIXO_RESULTADOS = 'resultados/'
