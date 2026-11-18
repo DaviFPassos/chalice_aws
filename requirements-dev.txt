@@ -3,3 +3,7 @@ boto3
 chalice
 httpie
 pytest
+# imagens de exemplo (scripts/gerar_imagens_exemplo.py)
+pillow
+arabic-reshaper
+python-bidi

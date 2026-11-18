@@ -51,6 +51,11 @@ htmlcov/
 dist/
 build/
 
+# ===== Front-end (React/Vite) =====
+node_modules/
+frontend/dist/
+.vite/
+
 # ===== Editores / SO =====
 .vscode/
 .idea/
