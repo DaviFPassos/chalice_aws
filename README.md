@@ -8,7 +8,7 @@ Aplicação serverless que recebe a foto de uma placa, monumento ou local com te
 
 Construída com **AWS Chalice** e implantada no **AWS Lambda**, com arquitetura
 **orientada a eventos** e três serviços de IA encadeados: **Amazon Rekognition →
-Amazon Translate → Amazon Polly**.
+Amazon Translate → Amazon Polly**. A interface é um **front-end em React**.
 
 ## Equipe
 
@@ -29,21 +29,24 @@ informação **falada em português**.
 
 1. O usuário envia a foto pelo **front-end em React** (ou direto pela API, `POST /imagens`).
    Fotos grandes de celular são reduzidas no navegador antes do envio.
-2. A imagem é gravada no **Amazon S3**, e o upload **dispara uma Lambda** (evento
-   `s3:ObjectCreated`).
-3. A Lambda encadeia os serviços de IA:
-   - **Rekognition** extrai o texto da imagem (`DetectText`) e descreve a cena
-     (`DetectLabels`: "monumento", "igreja", "rua"...);
+2. A API grava a imagem no **Amazon S3**, e o upload **dispara uma segunda Lambda**
+   (evento `s3:ObjectCreated`). O cliente não espera: recebe um `id` na hora.
+3. A Lambda encadeia os serviços de IA — a saída de cada um é a entrada do próximo:
+   - **Rekognition** extrai o texto (`DetectText`) e descreve a cena (`DetectLabels`).
+     No árabe, as palavras são remontadas pela posição na imagem, da direita para a
+     esquerda (ver [Resultados](#resultados));
    - o idioma é identificado pelo **alfabeto** do texto (árabe, cirílico ou latino);
-   - **Translate** traduz o texto e a descrição da cena para o português;
+   - **Translate** traduz o texto para o português; os rótulos comuns da cena têm
+     tradução fixa e só os demais passam pelo Translate;
    - **Polly** gera dois MP3: a **narração em português** (voz Camila) e a
-     **pronúncia original** do texto (voz do idioma detectado: Vicki, Tatyana ou Zeina).
+     **pronúncia original** do texto (Vicki para alemão, Tatyana para russo, Zeina para
+     árabe).
 4. O resultado (JSON + áudios) é salvo no S3 e consultado em `GET /imagens/{id}`. O
-   front mostra o texto original, a tradução e os players de áudio.
+   front mostra as etapas, a tradução, o texto original e os players de áudio.
 
-Exemplo de narração gerada:
-> "Na imagem há: monumento, arquitetura, céu. Foi encontrado um texto em alemão. Em
-> português, ele diz: Portão de Brandemburgo"
+Exemplo real de narração (`testes/imagens/arabe_saida_emergencia.jpg`):
+> "Na imagem há: placa, símbolo, sinal de trânsito, primeiros socorros. Foi encontrado
+> um texto em árabe. Em português, ele diz: Saída de emergência"
 
 ## Arquitetura
 
@@ -52,15 +55,15 @@ Diagrama, componentes, regiões e detalhes do encadeamento em
 
 ```
 Front React (GitHub Pages)
-   │ POST /imagens · GET /imagens/{id}
+   │  POST /imagens  ·  GET /imagens/{id}
    ▼
-API Gateway → Lambda (api_handler) → S3 uploads/
-                                                  │ evento s3:ObjectCreated
-                                                  ▼
-                       Lambda (ao_enviar_imagem) → Rekognition → Translate → Polly
-                                                  │
-                                                  ▼
-                              S3 resultados/ + audios/ → GET /imagens/{id}
+API Gateway ──► Lambda api_handler ──► S3  uploads/{id}.jpg
+                                        │  evento s3:ObjectCreated
+                                        ▼
+                Lambda ao_enviar_imagem ──► Rekognition ──► Translate ──► Polly
+                                        │
+                                        ▼
+                S3  resultados/{id}.json  +  audios/{id}/*.mp3
 ```
 
 ## Estrutura do projeto
@@ -68,47 +71,53 @@ API Gateway → Lambda (api_handler) → S3 uploads/
 ```
 .
 ├── app.py                       # rotas da API + handler do evento do S3
-├── frontend/                    # front-end em React (Vite), publicado no GitHub Pages
+├── chalicelib/                  # módulos empacotados junto com a Lambda
+│   ├── pipeline.py              # encadeamento Rekognition → Translate → Polly
+│   ├── visao.py                 # Amazon Rekognition
+│   ├── layout.py                # remonta as linhas (ordem e palavras do árabe)
+│   ├── traducao.py              # Amazon Translate (+ junção de frases em duas linhas)
+│   ├── rotulos.py               # tradução fixa dos rótulos comuns da cena
+│   ├── voz.py                   # Amazon Polly
+│   ├── idiomas.py               # detecção do idioma pelo alfabeto e vozes do Polly
+│   ├── armazenamento.py         # Amazon S3
+│   ├── cota.py                  # limites diário e mensal de envios (custo zero)
+│   ├── clientes.py              # clientes boto3 (por região)
+│   └── config.py                # configurações e limites
+├── frontend/                    # front-end em React (Vite)
 │   ├── src/App.jsx              # tela principal: envio, etapas e resultado
 │   ├── src/api.js               # chamadas à API (envio e consulta do resultado)
 │   ├── src/imagem.js            # validação e redução da foto no navegador
 │   └── src/componentes/         # EnvioImagem, Etapas, Resultado
-├── .github/workflows/frontend.yml  # testa e publica o front no GitHub Pages
-├── chalicelib/                  # módulos empacotados junto com a Lambda
-│   ├── pipeline.py              # encadeamento Rekognition → Translate → Polly
-│   ├── visao.py                 # Amazon Rekognition
-│   ├── traducao.py              # Amazon Translate
-│   ├── voz.py                   # Amazon Polly
-│   ├── armazenamento.py         # Amazon S3
-│   ├── cota.py                  # limites diário e mensal de envios (custo zero)
-│   ├── idiomas.py               # nomes dos idiomas e vozes do Polly
-│   ├── clientes.py              # clientes boto3 (por região)
-│   └── config.py                # configurações e limites
 ├── .chalice/
 │   ├── config.json              # app_name, variáveis de ambiente, timeouts
 │   └── policy-dev.json          # permissões IAM mínimas da Lambda
+├── .github/workflows/frontend.yml  # testa e publica o front no GitHub Pages
 ├── scripts/
 │   ├── criar_bucket.sh          # cria o bucket S3 (privado, expiração de 7 dias)
-│   ├── gerar_imagens_exemplo.py # gera as placas de exemplo em testes/imagens/
 │   ├── limitar_api.sh           # limita a taxa de requisições da API Gateway
 │   ├── testar_api.py            # envia imagens à API implantada e salva os resultados
-│   └── remover_tudo.sh          # remove a aplicação e o bucket da AWS
-├── tests/                       # testes automatizados (pytest, sem acessar a AWS)
+│   ├── gerar_imagens_exemplo.py # gera as placas de exemplo em testes/imagens/
+│   └── remover_tudo.sh          # remove a aplicação, o bucket e os logs da AWS
+├── tests/                       # testes automatizados do backend (pytest, sem AWS)
 ├── testes/
-│   ├── imagens/                 # imagens de entrada (12 exemplos em alemão, russo e árabe)
-│   └── resultados/              # JSON e MP3 produzidos pela aplicação
-├── docs/arquitetura.md          # projeto de arquitetura
-├── docs/custos.md               # levantamento de custos e limites de uso
-├── requirements.txt             # dependências da Lambda (boto3 recente, para escrita condicional no S3)
+│   ├── imagens/                 # 12 imagens de exemplo + LEIAME com o esperado de cada uma
+│   └── resultados/              # JSON e MP3 produzidos pela aplicação na AWS
+├── docs/
+│   ├── arquitetura.md           # projeto de arquitetura
+│   └── custos.md                # levantamento de custos e limites de uso
+├── requirements.txt             # dependências da Lambda (boto3 recente)
 └── requirements-dev.txt         # dependências de desenvolvimento
 ```
 
 ## Pré-requisitos
 
-- Python 3.12
-- AWS CLI configurada (`aws configure`) na região `sa-east-1`
+- **Python 3.12** e **Node.js 22** (ou 20.19+, exigido pelo Vite 7) para o front-end
+- **AWS CLI** configurada (`aws configure`) na região `sa-east-1`
+- Conta AWS no **Paid Plan**: o Amazon Translate não está disponível no Free Plan (o uso
+  continua dentro dos créditos e do teste gratuito do Translate — ver
+  [Custos e segurança](#custos-e-segurança))
 - Permissões do usuário IAM que faz o deploy:
-  - **Deploy:** Lambda, API Gateway, IAM (criar role e `iam:PassRole`), S3 (criar bucket e
+  - **Deploy:** Lambda, API Gateway, IAM (criar role e `iam:PassRole`), S3 (criar bucket,
     `s3:PutBucketNotification`) e CloudWatch Logs;
   - **Testes manuais contra a AWS:** `rekognition:DetectText`, `rekognition:DetectLabels`,
     `translate:TranslateText` e `polly:SynthesizeSpeech`.
@@ -124,39 +133,50 @@ python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
 
-# 2. Bucket S3 (uma única vez). O nome está em .chalice/config.json -> BUCKET_NAME;
-#    nomes de bucket são globais: se já existir, troque o nome no config.json e no
+# 2. Bucket S3 (uma única vez). O nome está em .chalice/config.json -> BUCKET_NAME.
+#    Nomes de bucket são globais: se já existir, troque o nome no config.json e no
 #    .chalice/policy-dev.json.
 ./scripts/criar_bucket.sh
 
-# 3. Deploy (cria as duas Lambdas, a API Gateway, a role e a notificação do bucket)
+# 3. Deploy (cria as duas Lambdas, a API Gateway, as roles e a notificação do bucket)
 chalice deploy
 ./scripts/limitar_api.sh   # limita a API a 1 req/s (rode após cada deploy)
 chalice url                # URL da API
+```
+
+**Front-end no GitHub Pages** (uma única vez): em *Settings → Pages → Build and
+deployment*, escolha **Source: GitHub Actions**. A partir daí, o workflow
+`.github/workflows/frontend.yml` testa e publica o front a cada push na `main` que altere
+`frontend/`, em https://davifpassos.github.io/chalice_aws/.
+
+**Remover tudo da AWS** (após os testes e a avaliação):
+
+```bash
+./scripts/remover_tudo.sh
 ```
 
 ## Execução
 
 ### Front-end (React)
 
-**Publicado:** https://davifpassos.github.io/chalice_aws/ (GitHub Pages, gratuito). Depois de
-um novo `chalice deploy`, a URL da API muda: abra o site uma vez com
-`?api=<URL de chalice url>` (fica salva no navegador) ou atualize a variável `API_URL` do
-repositório (*Settings → Secrets and variables → Actions → Variables*) e rode o workflow.
-Com a API fora do ar, o site mostra um aviso.
-
-**Local:**
+**Local (desenvolvimento):**
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local     # preencha API_PROXY_TARGET com a URL da API (sem /api/)
+cp .env.example .env.local     # preencha API_PROXY_TARGET com a URL da API, sem o /api/
 npm run dev                    # http://localhost:5173
 ```
 
 O Vite repassa as chamadas `/api` para a API implantada, então não é preciso liberar CORS
-para `localhost`. Em produção, a API só aceita chamadas de navegador vindas do GitHub Pages
-(`CORS_ORIGIN` em `.chalice/config.json`).
+para `localhost`. Escolha uma imagem de `testes/imagens/` e clique em "Ler e traduzir".
+
+**GitHub Pages:** cada `chalice deploy` feito depois de um `remover_tudo.sh` gera uma
+URL de API nova. Abra o site uma vez com `?api=<URL de chalice url>` (fica salva no
+navegador) ou atualize a variável `API_URL` do repositório (*Settings → Secrets and
+variables → Actions → Variables*) e rode o workflow. Em produção, a API só aceita chamadas
+de navegador vindas do GitHub Pages (`CORS_ORIGIN` em `.chalice/config.json`). Com a API
+fora do ar, o site mostra um aviso.
 
 ### API REST
 
@@ -164,9 +184,7 @@ para `localhost`. Em produção, a API só aceita chamadas de navegador vindas d
 API=$(chalice url)
 
 # Enviar uma foto (JPEG ou PNG, até 5 MB) -> 202 {"id": "...", "status": "processando"}
-curl -X POST -H 'Content-Type: image/jpeg' --data-binary @testes/imagens/foto.jpg ${API}imagens
-
-# PNG funciona igual, com Content-Type: image/png
+curl -X POST -H 'Content-Type: image/jpeg' --data-binary @testes/imagens/russo_metro.jpg ${API}imagens
 
 # Consultar o resultado -> 202 enquanto processa; 200 com texto, tradução, cena e áudios
 curl ${API}imagens/<id>
@@ -175,20 +193,21 @@ curl ${API}imagens/<id>
 | Método | Rota | Resposta |
 |---|---|---|
 | GET | `/` | Status da API e link para o front-end |
-| POST | `/imagens` | `202` com o `id`; `400` se o formato for inválido ou a imagem passar de 5 MB; `429` se o limite diário/mensal foi atingido |
+| POST | `/imagens` | `202` com o `id` · `400` formato inválido ou mais de 5 MB · `429` limite diário/mensal atingido |
 | GET | `/imagens/{id}` | `202` processando · `200` resultado · `404` inexistente · `400` id inválido |
 
-Resultado (`200`):
+Resultado (`200`), resumido:
 
 ```json
 {
   "id": "3f2a...",
   "status": "concluido",
-  "idioma_detectado": "de",
-  "texto_original": "Brandenburger Tor",
-  "texto_traduzido": "Portão de Brandemburgo",
-  "cena": [{"rotulo": "Monument", "rotulo_pt": "monumento", "confianca": 95.0}],
-  "narracao": "Na imagem há: monumento. Foi encontrado um texto em alemão. ...",
+  "idioma_detectado": "ar",
+  "texto_original": "مخرج الطوارئ",
+  "linhas": [{"texto": "مخرج الطوارئ", "confianca": 83.6}],
+  "texto_traduzido": "Saída de emergência",
+  "cena": [{"rotulo": "Sign", "rotulo_pt": "placa", "confianca": 100.0}],
+  "narracao": "Na imagem há: placa, símbolo, ... Em português, ele diz: Saída de emergência",
   "audios_url": {
     "narracao_pt": "https://...s3...narracao_pt.mp3?...",
     "pronuncia_original": "https://...s3...pronuncia_original.mp3?..."
@@ -200,37 +219,37 @@ Os links dos áudios são temporários (1 hora). Logs: `chalice logs --name ao_e
 
 ## Testes
 
-**Automatizados (sem AWS e sem custo):** os serviços são substituídos por versões falsas
-em `tests/conftest.py`.
+**Automatizados (sem AWS e sem custo):**
 
 ```bash
-python -m pytest -v               # backend
-cd frontend && npm test           # front-end (Vitest): chamadas à API, cota, redução de imagem
+python -m pytest -v               # backend: 53 testes (serviços simulados em tests/conftest.py)
+cd frontend && npm test           # front-end: 18 testes (Vitest)
 ```
 
-Cobrem: detecção do idioma pelo alfabeto (inclusive placas bilíngues), placas em alemão,
-russo e árabe (escolha da voz correta), texto com baixa
-confiança, imagem sem texto, validação de envio (formato e tamanho), rotas da
-API, disparo pelo evento do S3 e registro de erro no processamento.
+| Área | O que é testado |
+|---|---|
+| Leitura do texto | Ordem e junção das palavras em árabe usando as **posições reais** devolvidas pelo Rekognition; texto inclinado; descarte de baixa confiança e de símbolos soltos |
+| Idioma e tradução | Detecção pelo alfabeto (inclusive placa bilíngue), junção de frases em duas linhas, rótulos com tradução fixa |
+| Fluxo completo | Placas em alemão, russo e árabe com a voz certa de cada idioma, imagem sem texto, disparo pelo evento do S3, erro sem expor dados da conta |
+| API | Rotas, validação de formato e tamanho, CORS restrito ao front, cota diária e mensal (`429`) |
+| Front-end | Chamadas à API e mensagens de erro, espera do resultado, redução da imagem, URL da API |
 
-**Na AWS (aplicação implantada):** a pasta `testes/imagens/` já traz **12 imagens de
-exemplo** (placas em alemão, russo e árabe, uma bilíngue, uma sem texto e uma de baixa
-qualidade), geradas por `scripts/gerar_imagens_exemplo.py`. A lista, com a tradução
-esperada de cada uma, está em [`testes/imagens/LEIAME.md`](testes/imagens/LEIAME.md).
-Acrescente fotos reais na mesma pasta e rode:
+**Na AWS (aplicação implantada):** `testes/imagens/` traz **12 imagens de exemplo**
+(alemão, russo e árabe, uma bilíngue, uma sem texto e uma de baixa qualidade), geradas
+por `scripts/gerar_imagens_exemplo.py`. O texto e a tradução esperada de cada uma estão em
+[`testes/imagens/LEIAME.md`](testes/imagens/LEIAME.md). Acrescente fotos reais na mesma
+pasta e rode:
 
 ```bash
 python scripts/testar_api.py $(chalice url)
 ```
 
-Para cada imagem, o script grava em `testes/resultados/` o JSON da resposta e os MP3
-gerados.
+Para cada imagem, o script grava em `testes/resultados/` o JSON da resposta e os MP3.
 
 ## Resultados
 
-Teste na AWS em 18/11/2026 com as 12 imagens de exemplo de `testes/imagens/`. Respostas
-completas (JSON) e áudios (MP3) em [`testes/resultados/`](testes/resultados/).
-Reproduzir: `python scripts/testar_api.py $(chalice url)`.
+Teste na AWS em 18/11/2026 com as 12 imagens de exemplo. Respostas completas (JSON) e
+áudios (MP3) em [`testes/resultados/`](testes/resultados/).
 
 | Imagem | Texto extraído (Rekognition) | Tradução (Translate) | Avaliação |
 |---|---|---|---|
@@ -239,53 +258,47 @@ Reproduzir: `python scripts/testar_api.py $(chalice url)`.
 | `alemao_proibido_fumar` | Rauchen verboten / Bitte nicht rauchen | Proibido fumar / Por favor, não fume | ✅ |
 | `russo_metro` | Выход в город / Красная площадь | Saia para a cidade / Praça Vermelha | ⚠️ "Saia" (imperativo) em vez de "Saída" |
 | `russo_museu` | Государственный / исторический музей | Museu Histórico do Estado | ✅ linhas da mesma frase unidas |
-| `russo_cuidado_piso` | Скользкий пол | Piso escorregadio | ⚠️ "Осторожно!" não foi lido (ver abaixo) |
+| `russo_cuidado_piso` | Скользкий пол | Piso escorregadio | ⚠️ "Осторожно!" não foi lido |
 | `arabe_saida_emergencia` | مخرج الطوارئ | Saída de emergência | ✅ |
 | `arabe_museu` | المتحف المصري | O Museu Egípcio | ✅ |
 | `arabe_proibido_fumar` | ممنوع التدخين | Proibido fumar | ✅ |
-| `arabe_bilingue_rua` | شارع التحرير / Tahrir Street | Rua Tahrir / Rua Tahrer | ✅ árabe correto; ⚠️ o trecho em inglês é traduzido como árabe |
-| `sem_texto_monumento` | (nenhum) | — | ✅ narração descreve a cena: edifício, templo, pilar, Partenon… |
-| `baixa_qualidade_alemao` | den Linden / Unter / Brandenburger Tor | den Linden / Abaixo / Portão de Brandemburgo | ⚠️ texto inclinado e desfocado é lido em pedaços |
+| `arabe_bilingue_rua` | شارع التحرير / Tahrir Street | Rua Tahrir / Rua Tahrer | ✅ árabe correto · ⚠️ inglês traduzido como árabe |
+| `sem_texto_monumento` | (nenhum) | — | ✅ narração descreve a cena (edifício, templo, pilar, Partenon…) |
+| `baixa_qualidade_alemao` | den Linden / Unter / Brandenburger Tor | den Linden / Abaixo / Portão de Brandemburgo | ⚠️ texto inclinado e desfocado lido em pedaços |
 
-Tempo total por imagem (envio → resultado pronto): ~4 s; ~10 s na primeira chamada,
-quando a Lambda inicializa.
+Tempo por imagem (envio → resultado pronto): ~4 s; ~10 s na primeira chamada, quando a
+Lambda inicializa.
 
-**O que os testes revelaram e foi corrigido no código:**
+**O que os testes revelaram e foi corrigido:**
 
-- **Árabe fora de ordem e com palavras cortadas.** O Rekognition devolvia cada pedaço
-  de palavra como uma linha, da esquerda para a direita: "مخرج الطوارئ" chegava como
-  "رئ / الطوا / مخرج" e era traduzido como "Veja / Altawa / ventilação". As letras
-  árabes que não se ligam à seguinte (ا د ر …) criam vãos que o Rekognition interpreta
-  como espaços. Agora as palavras árabes são remontadas pela posição na imagem, da
-  direita para a esquerda, e os pedaços são unidos por uma regra linguística
-  (`chalicelib/layout.py`). Resultado: as 4 placas em árabe passaram de erradas para
-  corretas.
-- **Rótulos da cena.** "Sign" (placa) era traduzido como "assine". Os rótulos comuns
-  agora têm tradução fixa (`chalicelib/rotulos.py`).
-- **Frase quebrada em duas linhas.** "Государственный / исторический музей" virava "De
-  propriedade do Estado / museu histórico"; linhas que continuam a frase agora são
-  traduzidas juntas.
-- **Símbolos soltos.** O "!" de um ícone era lido como texto e entrava na narração;
-  linhas sem letras agora são descartadas.
+| Problema | Antes | Correção |
+|---|---|---|
+| Árabe fora de ordem e com palavras cortadas | "مخرج الطوارئ" chegava como "رئ / الطوا / مخرج" → *Veja / Altawa / ventilação* | O Rekognition devolve as palavras árabes da esquerda para a direita e corta a palavra nas letras que não se ligam à seguinte (ا د ر …). `layout.py` remonta as palavras pela posição, da direita para a esquerda, e une os pedaços por regra linguística. As 4 placas em árabe passaram a sair corretas |
+| Rótulos da cena | "Sign" → *assine* | Tradução fixa dos rótulos comuns (`rotulos.py`) |
+| Frase quebrada em duas linhas | *De propriedade do Estado / museu histórico* | Linhas que continuam a frase são traduzidas juntas |
+| Símbolos soltos | O "!" de um ícone entrava na narração | Linhas sem letras são descartadas |
 
-**Limitações observadas:** palavras isoladas, sem contexto, podem ganhar outro sentido
-("Выход" → "Saia"); o Rekognition confundiu "Осторожно!" com letras latinas parecidas
-("OctopoXHO!", 21% de confiança), e o filtro de confiança o descartou; em fotos
-inclinadas e desfocadas, o texto é lido em pedaços.
+## Limitações
+
+- **Idiomas:** o Rekognition `DetectText` foi projetado para inglês, árabe, russo, alemão,
+  francês, italiano, português e espanhol, e lê até **100 palavras** por imagem. Não lê
+  mandarim, japonês ou tailandês. Como o idioma é detectado pelo alfabeto, textos em
+  outros idiomas latinos (inglês, francês…) são tratados como alemão.
+- **Palavras sem contexto** podem ganhar outro sentido na tradução ("Выход" → "Saia").
+- **Letras parecidas:** o Rekognition pode confundir cirílico com latino ("Осторожно!"
+  foi lido como "OctopoXHO!", com 21% de confiança, e descartado pelo filtro de 80%).
+- **Placas bilíngues:** o trecho em outro idioma é traduzido como se fosse do idioma
+  principal ("Tahrir Street" → "Rua Tahrer").
+- **Árabe:** a junção dos pedaços de palavra é uma regra heurística, validada com as
+  imagens de exemplo; fotos reais podem trazer casos não previstos.
+- **Monumentos:** o Rekognition não identifica monumentos **pelo nome**, só a categoria
+  ("monumento", "templo", "torre").
+- **Qualidade da foto:** imagens tremidas, escuras ou com texto inclinado reduzem a
+  precisão.
 
 ## Vídeo de demonstração
 
 _Link do vídeo:_ a definir.
-
-## Limitações
-
-- O Rekognition `DetectText` lê até **100 palavras** por imagem e foi projetado para
-  inglês, árabe, russo, alemão, francês, italiano, português e espanhol. Não lê
-  mandarim, japonês ou tailandês.
-- No árabe (escrito da direita para a esquerda), a ordem das linhas retornada pode variar.
-- O Rekognition não identifica monumentos **pelo nome**, apenas a categoria ("monumento",
-  "igreja", "torre").
-- Fotos tremidas, escuras ou com texto inclinado reduzem a precisão.
 
 ## Custos e segurança
 
@@ -303,17 +316,22 @@ _Link do vídeo:_ a definir.
 
   | Limite | Valor |
   |---|---|
-  | Envios por dia / por mês | **30 / 300 imagens** (acima disso, `POST /imagens` responde `429`) |
+  | Envios por dia / por mês | **30 / 300 imagens** (acima disso, `POST /imagens` responde `429` e a imagem não é gravada) |
   | Taxa de requisições da API | 1 req/s (`scripts/limitar_api.sh`) |
   | Texto enviado ao Translate / narração enviada ao Polly | 1.000 / 1.500 caracteres |
 
-  Mesmo com abuso máximo, o gasto fica em ~25% dos créditos por mês, e o Translate
-  em ~17% do teste gratuito. O uso real esperado é ~1% dos créditos.
-- Configure um alerta de **US$ 1** no **AWS Budgets** e remova tudo após a avaliação:
+  Mesmo com abuso máximo, o gasto fica em ~25% dos créditos por mês, e o Translate em
+  ~17% do teste gratuito. O uso real esperado é ~1% dos créditos.
+- Configure um alerta de **US$ 1** no **AWS Budgets** e rode `./scripts/remover_tudo.sh`
+  depois dos testes e da avaliação.
 
-```bash
-./scripts/remover_tudo.sh
-```
+## Como contribuir
+
+- Crie uma branch a partir da `main` para cada mudança (`feat/...`, `fix/...`) e abra um
+  Pull Request explicando o que muda e por quê.
+- Rode `python -m pytest` e `cd frontend && npm test` antes de enviar.
+- Nunca versione credenciais, arquivos `.env` ou a pasta `.chalice/deployed/` (já estão
+  no `.gitignore`). O repositório é público e tem *push protection* contra segredos.
 
 ## Histórico
 
