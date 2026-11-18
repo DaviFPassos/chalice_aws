@@ -52,12 +52,21 @@ def processar_imagem(chave_imagem):
     return resultado
 
 
+MENSAGEM_ERRO = ('Não foi possível processar a imagem. Verifique se é uma foto JPEG ou '
+                 'PNG válida e tente novamente.')
+
+
 def registrar_erro(chave_imagem, erro):
-    """Grava um resultado de erro para que o cliente não fique esperando para sempre."""
+    """Grava um resultado de erro para que o cliente não fique esperando para sempre.
+
+    A mensagem é genérica de propósito: exceções da AWS podem conter o ID da conta e
+    ARNs, e o resultado é público. Os detalhes ficam só no CloudWatch Logs.
+    """
     id_imagem = armazenamento.id_da_chave(chave_imagem)
     armazenamento.salvar_resultado(id_imagem, {
         'id': id_imagem,
         'status': 'erro',
         'imagem': chave_imagem,
-        'erro': str(erro),
+        'erro': MENSAGEM_ERRO,
+        'tipo_erro': type(erro).__name__,
     })

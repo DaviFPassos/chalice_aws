@@ -14,9 +14,9 @@ Amazon Translate → Amazon Polly**.
 
 | Nome | Matrícula |
 |---|---|
-| _Nome completo_ | _Matrícula_ |
-| _Nome completo_ | _Matrícula_ |
-| _Nome completo_ | _Matrícula_ |
+| Davi Passos | _a preencher_ |
+| Rafael Fonseca | _a preencher_ |
+| Lucca Melo | _a preencher_ |
 
 ## Problema
 
@@ -78,6 +78,7 @@ Usuário → API Gateway → Lambda (api_handler) → S3 uploads/
 │   └── policy-dev.json          # permissões IAM mínimas da Lambda
 ├── scripts/
 │   ├── criar_bucket.sh          # cria o bucket S3 (privado, expiração de 7 dias)
+│   ├── limitar_api.sh           # limita a taxa de requisições da API Gateway
 │   ├── testar_api.py            # envia imagens à API implantada e salva os resultados
 │   └── remover_tudo.sh          # remove a aplicação e o bucket da AWS
 ├── tests/                       # testes automatizados (pytest, sem acessar a AWS)
@@ -118,7 +119,8 @@ pip install -r requirements-dev.txt
 
 # 3. Deploy (cria as duas Lambdas, a API Gateway, a role e a notificação do bucket)
 chalice deploy
-chalice url          # URL da API
+./scripts/limitar_api.sh   # limita a API a 2 req/s (rode após cada deploy)
+chalice url                # URL da API
 ```
 
 ## Execução
@@ -214,8 +216,15 @@ _Link do vídeo:_ a definir.
 
 - O bucket é **privado** e os objetos expiram em **7 dias**. Os áudios são entregues por
   URLs temporárias.
-- Cada imagem gera chamadas pagas ao Rekognition, Translate e Polly. Configure um alerta
-  no **AWS Budgets** e remova tudo após a avaliação:
+- A API valida formato (assinatura JPEG/PNG) e tamanho (5 MB) antes de gravar no S3, e
+  não habilita CORS: só a própria página da aplicação a usa pelo navegador.
+- Erros de processamento retornam uma mensagem genérica; os detalhes (que podem conter
+  ARNs e o ID da conta) ficam só no CloudWatch Logs.
+- A Lambda usa uma política IAM mínima (`.chalice/policy-dev.json`), sem permissões
+  geradas automaticamente.
+- A API é pública e cada imagem gera chamadas pagas ao Rekognition, Translate e Polly.
+  Por isso `scripts/limitar_api.sh` limita a taxa de requisições. Configure também um
+  alerta no **AWS Budgets** e remova tudo após a avaliação:
 
 ```bash
 ./scripts/remover_tudo.sh

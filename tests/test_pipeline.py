@@ -101,4 +101,17 @@ def test_evento_s3_registra_erro(aws):
         client.lambda_.invoke('ao_enviar_imagem', evento)
     resultado = _resultado(aws)
     assert resultado['status'] == 'erro'
-    assert 'imagem corrompida' in resultado['erro']
+    assert resultado['tipo_erro'] == 'RuntimeError'
+
+
+def test_erro_nao_expoe_detalhes_da_conta(aws):
+    from botocore.exceptions import ClientError
+    aws['rekognition'].erro = ClientError({'Error': {
+        'Code': 'AccessDeniedException',
+        'Message': 'User: arn:aws:sts::123456789012:assumed-role/x is not authorized'}},
+        'DetectText')
+    with Client(app) as client:
+        evento = client.events.generate_s3_event(bucket=config.BUCKET_NAME, key=CHAVE)
+        client.lambda_.invoke('ao_enviar_imagem', evento)
+    salvo = json.dumps(_resultado(aws))
+    assert '123456789012' not in salvo and 'arn:aws' not in salvo

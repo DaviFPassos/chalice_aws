@@ -60,7 +60,7 @@ def index():
                     headers={'Content-Type': 'text/html; charset=utf-8'})
 
 
-@app.route('/imagens', methods=['POST'], cors=True,
+@app.route('/imagens', methods=['POST'],
            content_types=['image/jpeg', 'image/png', 'application/json'])
 def enviar_imagem():
     dados, extensao = _ler_imagem_da_requisicao(app.current_request)
@@ -75,7 +75,7 @@ def enviar_imagem():
     )
 
 
-@app.route('/imagens/{id_imagem}', methods=['GET'], cors=True)
+@app.route('/imagens/{id_imagem}', methods=['GET'])
 def consultar_imagem(id_imagem):
     if not ID_VALIDO.match(id_imagem):
         raise BadRequestError('Identificador inválido.')
