@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { aguardarResultado, enviarImagem } from './api.js'
-import { obterApiBase } from './config.js'
+import { esquecerCodigo, lerCodigoSalvo, obterApiBase, salvarCodigo } from './config.js'
 import { prepararImagem } from './imagem.js'
+import CodigoAcesso from './componentes/CodigoAcesso.jsx'
 import EnvioImagem from './componentes/EnvioImagem.jsx'
 import Etapas from './componentes/Etapas.jsx'
 import Resultado from './componentes/Resultado.jsx'
@@ -15,6 +16,10 @@ export default function App() {
   const [erro, setErro] = useState(null)
   const [historico, setHistorico] = useState([]) // [{ dados, previa }], mais recente primeiro
   const previasEmUso = useRef(new Set()) // prévias exibidas no histórico não podem ser liberadas
+  const [codigo, setCodigo] = useState(() => lerCodigoSalvo())
+  const [lembrar, setLembrar] = useState(() => Boolean(lerCodigoSalvo()))
+  const [codigoInvalido, setCodigoInvalido] = useState(false)
+  const campoCodigo = useRef(null)
 
   useEffect(() => {
     if (!arquivo) return undefined
@@ -26,6 +31,16 @@ export default function App() {
   }, [arquivo])
 
   const ocupado = fase === 'enviando' || fase === 'processando'
+
+  function mudarCodigo(valor) {
+    setCodigo(valor)
+    setCodigoInvalido(false)
+  }
+
+  function mudarLembrar(valor) {
+    setLembrar(valor)
+    if (!valor) esquecerCodigo()
+  }
 
   function escolher(novo) {
     setArquivo(novo)
@@ -39,9 +54,10 @@ export default function App() {
     setFase('enviando')
     try {
       const imagem = await prepararImagem(arquivo)
-      const { id } = await enviarImagem(apiBase, imagem)
+      const { id } = await enviarImagem(apiBase, imagem, { codigo })
+      if (lembrar) salvarCodigo(codigo)
       setFase('processando')
-      const dados = await aguardarResultado(apiBase, id, { aoTentar: setTentativas })
+      const dados = await aguardarResultado(apiBase, id, { codigo, aoTentar: setTentativas })
       previasEmUso.current.add(previa)
       setHistorico((h) => [{ dados, previa }, ...h].slice(0, 10))
       setFase('concluido')
@@ -49,6 +65,11 @@ export default function App() {
     } catch (e) {
       setErro(e.message)
       setFase('erro')
+      if (e.status === 401) {
+        setCodigoInvalido(true)
+        esquecerCodigo()
+        campoCodigo.current?.focus()
+      }
     }
   }
 
@@ -64,9 +85,18 @@ export default function App() {
 
       <main>
         <section className="cartao" aria-label="Enviar imagem">
+          <CodigoAcesso
+            codigo={codigo}
+            aoMudar={mudarCodigo}
+            lembrar={lembrar}
+            aoMudarLembrar={mudarLembrar}
+            invalido={codigoInvalido}
+            desabilitado={ocupado}
+            entradaRef={campoCodigo}
+          />
           <EnvioImagem aoEscolher={escolher} desabilitado={ocupado} />
           {previa && arquivo && <img src={previa} alt="Prévia da foto escolhida" className="previa" />}
-          <button type="button" className="botao" onClick={processar} disabled={!arquivo || ocupado}>
+          <button type="button" className="botao" onClick={processar} disabled={!arquivo || !codigo.trim() || ocupado}>
             {ocupado ? 'Processando…' : 'Ler e traduzir'}
           </button>
           {(ocupado || fase === 'concluido') && <Etapas fase={fase} tentativas={tentativas} />}

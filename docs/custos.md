@@ -76,7 +76,16 @@ limite.
 - As consultas (`GET /imagens/{id}`) não entram na cota de envios, mas custam frações de
   centavo: usam HEAD/GET no S3 em vez de LIST, que é ~12x mais caro.
 
-## 4. Proteções que dependem de você
+## 4. Código de acesso
+
+Desde a introdução do código de acesso (`chalicelib/acesso.py`), quem não tem o código
+recebe `401` antes de qualquer gravação no S3 ou consumo de cota: estranhos não geram
+custo com os serviços de IA. O pior caso de abuso da tabela acima passa a exigir que o
+código vaze. O único custo que um estranho ainda pode gerar são requisições recusadas na
+API Gateway e na Lambda (frações de centavo, limitadas a 1 req/s). O código fica no SSM
+Parameter Store (parâmetro padrão, sem custo).
+
+## 5. Proteções que dependem de você
 
 1. **Alerta no AWS Budgets** (disponível no Free Plan): orçamento de **US$ 1** com aviso
    por e-mail em 50% e 100%. Como o uso real é de centavos, qualquer aviso indica algo

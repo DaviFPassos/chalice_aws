@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { calcularDimensoes, precisaPreparar, TAMANHO_MAXIMO, validarTipo } from './imagem.js'
-import { obterApiBase, urlValida } from './config.js'
+import { esquecerCodigo, lerCodigoSalvo, obterApiBase, salvarCodigo, urlValida } from './config.js'
 import { etapaAtual } from './componentes/Etapas.jsx'
 
 describe('validarTipo', () => {
@@ -66,5 +66,32 @@ describe('etapaAtual', () => {
     expect(etapaAtual('processando', 99)).toBe(3)
     expect(etapaAtual('concluido', 5)).toBe(4)
     expect(etapaAtual('ocioso', 0)).toBe(-1)
+  })
+})
+
+describe('código de acesso no navegador', () => {
+  const memoria = () => {
+    const dados = {}
+    return {
+      getItem: (k) => dados[k] ?? null,
+      setItem: (k, v) => { dados[k] = v },
+      removeItem: (k) => { delete dados[k] },
+    }
+  }
+
+  it('salva, lê e esquece o código', () => {
+    const armazenamento = memoria()
+    expect(lerCodigoSalvo(armazenamento)).toBe('')
+    salvarCodigo('ABCD-EFGH-JKLM', armazenamento)
+    expect(lerCodigoSalvo(armazenamento)).toBe('ABCD-EFGH-JKLM')
+    esquecerCodigo(armazenamento)
+    expect(lerCodigoSalvo(armazenamento)).toBe('')
+  })
+
+  it('não quebra com armazenamento bloqueado', () => {
+    const bloqueado = { getItem: () => { throw new Error() }, setItem: () => { throw new Error() }, removeItem: () => { throw new Error() } }
+    expect(lerCodigoSalvo(bloqueado)).toBe('')
+    expect(() => salvarCodigo('x', bloqueado)).not.toThrow()
+    expect(() => esquecerCodigo(bloqueado)).not.toThrow()
   })
 })

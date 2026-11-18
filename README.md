@@ -27,8 +27,10 @@ informação **falada em português**.
 
 ## Como funciona
 
-1. O usuário envia a foto pelo **front-end em React** (ou direto pela API, `POST /imagens`).
-   Fotos grandes de celular são reduzidas no navegador antes do envio.
+1. O usuário informa o **código de acesso** e envia a foto pelo **front-end em React** (ou
+   direto pela API, `POST /imagens`). Fotos grandes de celular são reduzidas no navegador
+   antes do envio. Sem o código, a API recusa o envio — assim estranhos não consomem os
+   créditos da AWS.
 2. A API grava a imagem no **Amazon S3**, e o upload **dispara uma segunda Lambda**
    (evento `s3:ObjectCreated`). O cliente não espera: recebe um `id` na hora.
 3. A Lambda encadeia os serviços de IA — a saída de cada um é a entrada do próximo:
@@ -80,6 +82,7 @@ API Gateway ──► Lambda api_handler ──► S3  uploads/{id}.jpg
 │   ├── voz.py                   # Amazon Polly
 │   ├── idiomas.py               # detecção do idioma pelo alfabeto e vozes do Polly
 │   ├── armazenamento.py         # Amazon S3
+│   ├── acesso.py                # código de acesso (lido do SSM Parameter Store)
 │   ├── cota.py                  # limites diário e mensal de envios (custo zero)
 │   ├── clientes.py              # clientes boto3 (por região)
 │   └── config.py                # configurações e limites
@@ -87,17 +90,18 @@ API Gateway ──► Lambda api_handler ──► S3  uploads/{id}.jpg
 │   ├── src/App.jsx              # tela principal: envio, etapas e resultado
 │   ├── src/api.js               # chamadas à API (envio e consulta do resultado)
 │   ├── src/imagem.js            # validação e redução da foto no navegador
-│   └── src/componentes/         # EnvioImagem, Etapas, Resultado
+│   └── src/componentes/         # CodigoAcesso, EnvioImagem, Etapas, Resultado
 ├── .chalice/
 │   ├── config.json              # app_name, variáveis de ambiente, timeouts
 │   └── policy-dev.json          # permissões IAM mínimas da Lambda
 ├── .github/workflows/frontend.yml  # testa e publica o front no GitHub Pages
 ├── scripts/
 │   ├── criar_bucket.sh          # cria o bucket S3 (privado, expiração de 7 dias)
+│   ├── definir_codigo_acesso.sh # define ou troca o código de acesso (SSM)
 │   ├── limitar_api.sh           # limita a taxa de requisições da API Gateway
 │   ├── testar_api.py            # envia imagens à API implantada e salva os resultados
 │   ├── gerar_imagens_exemplo.py # gera as placas de exemplo em testes/imagens/
-│   └── remover_tudo.sh          # remove a aplicação, o bucket e os logs da AWS
+│   └── remover_tudo.sh          # remove a aplicação, o bucket, os logs e o código da AWS
 ├── tests/                       # testes automatizados do backend (pytest, sem AWS)
 ├── testes/
 │   ├── imagens/                 # 12 imagens de exemplo + LEIAME com o esperado de cada uma
@@ -118,7 +122,8 @@ API Gateway ──► Lambda api_handler ──► S3  uploads/{id}.jpg
   [Custos e segurança](#custos-e-segurança))
 - Permissões do usuário IAM que faz o deploy:
   - **Deploy:** Lambda, API Gateway, IAM (criar role e `iam:PassRole`), S3 (criar bucket,
-    `s3:PutBucketNotification`) e CloudWatch Logs;
+    `s3:PutBucketNotification`), CloudWatch Logs e SSM (`ssm:PutParameter` e
+    `ssm:DeleteParameter` em `/leitor-placas/*`);
   - **Testes manuais contra a AWS:** `rekognition:DetectText`, `rekognition:DetectLabels`,
     `translate:TranslateText` e `polly:SynthesizeSpeech`.
 
@@ -138,7 +143,11 @@ pip install -r requirements-dev.txt
 #    .chalice/policy-dev.json.
 ./scripts/criar_bucket.sh
 
-# 3. Deploy (cria as duas Lambdas, a API Gateway, as roles e a notificação do bucket)
+# 3. Código de acesso (guardado no SSM, nunca no repositório). Gera um código aleatório
+#    e o mostra na tela: compartilhe só com a equipe e o professor.
+./scripts/definir_codigo_acesso.sh
+
+# 4. Deploy (cria as duas Lambdas, a API Gateway, as roles e a notificação do bucket)
 chalice deploy
 ./scripts/limitar_api.sh   # limita a API a 1 req/s (rode após cada deploy)
 chalice url                # URL da API
@@ -169,7 +178,8 @@ npm run dev                    # http://localhost:5173
 ```
 
 O Vite repassa as chamadas `/api` para a API implantada, então não é preciso liberar CORS
-para `localhost`. Escolha uma imagem de `testes/imagens/` e clique em "Ler e traduzir".
+para `localhost`. Informe o código de acesso, escolha uma imagem de `testes/imagens/` e
+clique em "Ler e traduzir". O código pode ficar lembrado no navegador.
 
 **GitHub Pages:** cada `chalice deploy` feito depois de um `remover_tudo.sh` gera uma
 URL de API nova. Abra o site uma vez com `?api=<URL de chalice url>` (fica salva no
@@ -182,19 +192,24 @@ fora do ar, o site mostra um aviso.
 
 ```bash
 API=$(chalice url)
+CODIGO=XXXX-XXXX-XXXX   # código de acesso definido por scripts/definir_codigo_acesso.sh
 
 # Enviar uma foto (JPEG ou PNG, até 5 MB) -> 202 {"id": "...", "status": "processando"}
-curl -X POST -H 'Content-Type: image/jpeg' --data-binary @testes/imagens/russo_metro.jpg ${API}imagens
+curl -X POST -H "X-Codigo-Acesso: $CODIGO" -H 'Content-Type: image/jpeg' \
+     --data-binary @testes/imagens/russo_metro.jpg ${API}imagens
 
 # Consultar o resultado -> 202 enquanto processa; 200 com texto, tradução, cena e áudios
-curl ${API}imagens/<id>
+curl -H "X-Codigo-Acesso: $CODIGO" ${API}imagens/<id>
 ```
 
 | Método | Rota | Resposta |
 |---|---|---|
 | GET | `/` | Status da API e link para o front-end |
-| POST | `/imagens` | `202` com o `id` · `400` formato inválido ou mais de 5 MB · `429` limite diário/mensal atingido |
-| GET | `/imagens/{id}` | `202` processando · `200` resultado · `404` inexistente · `400` id inválido |
+| POST | `/imagens` | `202` com o `id` · `400` formato inválido ou mais de 5 MB · `401` código de acesso ausente ou errado · `429` limite diário/mensal atingido |
+| GET | `/imagens/{id}` | `202` processando · `200` resultado · `401` código errado · `404` inexistente · `400` id inválido |
+
+`POST /imagens` e `GET /imagens/{id}` exigem o cabeçalho `X-Codigo-Acesso`. Sem o código
+configurado no SSM, a API responde `503` a tudo (falha fechada).
 
 Resultado (`200`), resumido:
 
@@ -222,8 +237,8 @@ Os links dos áudios são temporários (1 hora). Logs: `chalice logs --name ao_e
 **Automatizados (sem AWS e sem custo):**
 
 ```bash
-python -m pytest -v               # backend: 53 testes (serviços simulados em tests/conftest.py)
-cd frontend && npm test           # front-end: 18 testes (Vitest)
+python -m pytest -v               # backend: 65 testes (serviços simulados em tests/conftest.py)
+cd frontend && npm test           # front-end: 21 testes (Vitest)
 ```
 
 | Área | O que é testado |
@@ -232,7 +247,8 @@ cd frontend && npm test           # front-end: 18 testes (Vitest)
 | Idioma e tradução | Detecção pelo alfabeto (inclusive placa bilíngue), junção de frases em duas linhas, rótulos com tradução fixa |
 | Fluxo completo | Placas em alemão, russo e árabe com a voz certa de cada idioma, imagem sem texto, disparo pelo evento do S3, erro sem expor dados da conta |
 | API | Rotas, validação de formato e tamanho, CORS restrito ao front, cota diária e mensal (`429`) |
-| Front-end | Chamadas à API e mensagens de erro, espera do resultado, redução da imagem, URL da API |
+| Código de acesso | `401` sem gravar nem gastar cota, maiúsculas/espaços ignorados, `503` sem código configurado, cache do SSM |
+| Front-end | Chamadas à API com o código e mensagens de erro, espera do resultado, redução da imagem, URL da API, código lembrado no navegador |
 
 **Na AWS (aplicação implantada):** `testes/imagens/` traz **12 imagens de exemplo**
 (alemão, russo e árabe, uma bilíngue, uma sem texto e uma de baixa qualidade), geradas
@@ -241,6 +257,7 @@ por `scripts/gerar_imagens_exemplo.py`. O texto e a tradução esperada de cada 
 pasta e rode:
 
 ```bash
+export CODIGO_ACESSO=XXXX-XXXX-XXXX
 python scripts/testar_api.py $(chalice url)
 ```
 
@@ -302,6 +319,12 @@ _Link do vídeo:_ a definir.
 
 ## Custos e segurança
 
+- **Código de acesso:** só quem tem o código (equipe e professor) consegue enviar fotos
+  ou consultar resultados. O código fica no **AWS SSM Parameter Store** como
+  `SecureString` (criptografado), nunca no repositório; é comparado em tempo constante, e
+  um código errado recebe `401` antes de qualquer gravação ou consumo de cota. Com 12
+  caracteres aleatórios e o limite de 1 req/s, adivinhá-lo é inviável. Para trocar:
+  `./scripts/definir_codigo_acesso.sh` (vale em até 5 minutos).
 - O bucket é **privado** e os objetos expiram em **7 dias**. Os áudios são entregues por
   URLs temporárias.
 - A API valida formato (assinatura JPEG/PNG) e tamanho (5 MB) antes de gravar no S3, e
@@ -310,9 +333,9 @@ _Link do vídeo:_ a definir.
   ARNs e o ID da conta) ficam só no CloudWatch Logs.
 - A Lambda usa uma política IAM mínima (`.chalice/policy-dev.json`), sem permissões
   geradas automaticamente.
-- **Uso sem custo:** a API é pública e cada imagem consome créditos da AWS (Rekognition,
-  Translate e Polly). Para que o projeto nunca gere cobrança, a aplicação tem limites
-  definidos a partir de um levantamento de preços ([`docs/custos.md`](docs/custos.md)):
+- **Uso sem custo:** cada imagem consome créditos da AWS (Rekognition, Translate e Polly).
+  Além do código de acesso, a aplicação tem limites definidos a partir de um levantamento
+  de preços ([`docs/custos.md`](docs/custos.md)), que valem mesmo para quem tem o código:
 
   | Limite | Valor |
   |---|---|

@@ -72,6 +72,23 @@ body {
 .area-envio:disabled { cursor: default; opacity: .6; }
 .area-envio:focus-visible, .botao:focus-visible { outline: 3px solid var(--destaque); outline-offset: 2px; }
 
+.codigo-acesso { margin-bottom: 16px; }
+.codigo-acesso > label:first-child { display: block; font-weight: 600; margin-bottom: 6px; }
+.campo-codigo { display: flex; gap: 8px; }
+.campo-codigo input {
+  flex: 1; min-width: 0; padding: 11px 12px; font: inherit; letter-spacing: .08em;
+  color: var(--texto); background: var(--fundo); border: 1px solid var(--borda); border-radius: 10px;
+}
+.campo-codigo input:focus-visible { outline: 3px solid var(--destaque); outline-offset: 1px; }
+.campo-codigo input[aria-invalid] { border-color: var(--erro); }
+.botao-secundario {
+  padding: 0 14px; font: inherit; color: var(--texto); background: transparent;
+  border: 1px solid var(--borda); border-radius: 10px; cursor: pointer;
+}
+.botao-secundario:disabled { opacity: .5; cursor: default; }
+.ajuda { margin: 6px 0 0; font-size: .85rem; color: var(--suave); }
+.lembrar { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: .9rem; color: var(--suave); cursor: pointer; }
+
 .previa { display: block; max-width: 100%; max-height: 320px; margin: 16px auto 0; border-radius: 10px; }
 
 .botao {

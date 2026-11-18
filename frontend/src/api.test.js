@@ -11,12 +11,19 @@ describe('enviarImagem', () => {
   it('envia o corpo binário com o tipo da imagem e devolve o id', async () => {
     const fetchFn = vi.fn().mockResolvedValue(resposta(202, { id: 'abc', status: 'processando' }))
     const blob = new Blob(['x'], { type: 'image/png' })
-    await expect(enviarImagem(BASE, blob, { fetchFn })).resolves.toEqual({ id: 'abc', status: 'processando' })
+    await expect(enviarImagem(BASE, blob, { codigo: 'ABCD-EFGH-JKLM', fetchFn })).resolves.toEqual({ id: 'abc', status: 'processando' })
     const [url, opcoes] = fetchFn.mock.calls[0]
     expect(url).toBe(`${BASE}imagens`)
     expect(opcoes.method).toBe('POST')
     expect(opcoes.headers['Content-Type']).toBe('image/png')
     expect(opcoes.body).toBe(blob)
+    expect(opcoes.headers['X-Codigo-Acesso']).toBe('ABCD-EFGH-JKLM')
+  })
+
+  it('explica quando o código de acesso é inválido (401)', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(resposta(401, { Message: 'Código de acesso inválido.' }))
+    await expect(enviarImagem(BASE, new Blob(['x']), { codigo: 'errado', fetchFn }))
+      .rejects.toMatchObject({ status: 401, message: expect.stringMatching(/Código de acesso inválido/) })
   })
 
   it('mostra a mensagem da cota quando a API responde 429', async () => {
@@ -53,9 +60,10 @@ describe('aguardarResultado', () => {
       .mockResolvedValueOnce(resposta(202, {}))
       .mockResolvedValueOnce(resposta(200, { status: 'concluido', texto_traduzido: 'Saída' }))
     const aoTentar = vi.fn()
-    const dados = await aguardarResultado(BASE, 'abc', { fetchFn, esperar, aoTentar })
+    const dados = await aguardarResultado(BASE, 'abc', { codigo: 'ABCD', fetchFn, esperar, aoTentar })
     expect(dados.texto_traduzido).toBe('Saída')
     expect(aoTentar).toHaveBeenCalledTimes(3)
+    expect(fetchFn.mock.calls.every(([, op]) => op.headers['X-Codigo-Acesso'] === 'ABCD')).toBe(true)
   })
 
   it('lança erro quando o processamento falhou', async () => {

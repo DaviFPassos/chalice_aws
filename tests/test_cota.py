@@ -57,7 +57,7 @@ def test_conflitos_demais_recusam_o_envio(aws, limites):
 
 
 def test_api_responde_429_ao_atingir_o_limite(aws, limites):
-    cabecalhos = {'Accept': 'application/json', 'Content-Type': 'image/jpeg'}
+    cabecalhos = {'Accept': 'application/json', 'Content-Type': 'image/jpeg', 'X-Codigo-Acesso': 'ABCD-EFGH-JKLM'}
     with Client(app) as client:
         respostas = [client.http.post('/imagens', body=JPEG, headers=cabecalhos).status_code
                      for _ in range(4)]

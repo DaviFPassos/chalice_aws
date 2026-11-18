@@ -11,21 +11,24 @@ function comBarra(url) {
   return url.endsWith('/') ? url : `${url}/`
 }
 
-function lerSalvo(armazenamento) {
+function lerChave(armazenamento, chave) {
   try {
-    return armazenamento?.getItem(CHAVE) || null
+    return armazenamento?.getItem(chave) || null
   } catch {
     return null
   }
 }
 
-function salvar(armazenamento, valor) {
+function gravarChave(armazenamento, chave, valor) {
   try {
-    armazenamento?.setItem(CHAVE, valor)
+    armazenamento?.setItem(chave, valor)
   } catch {
     // navegação privada ou armazenamento bloqueado: segue sem salvar
   }
 }
+
+const lerSalvo = (armazenamento) => lerChave(armazenamento, CHAVE)
+const salvar = (armazenamento, valor) => gravarChave(armazenamento, CHAVE, valor)
 
 export function urlValida(valor) {
   try {
@@ -50,4 +53,23 @@ export function obterApiBase({
   if (salvo && urlValida(salvo)) return comBarra(salvo)
   if (padrao) return comBarra(padrao)
   return '/api/'
+}
+
+// Código de acesso: lembrado só neste navegador (localStorage), se o usuário quiser.
+const CHAVE_CODIGO = 'leitor-placas:codigo'
+
+export function lerCodigoSalvo(armazenamento = typeof window !== 'undefined' ? window.localStorage : null) {
+  return lerChave(armazenamento, CHAVE_CODIGO) || ''
+}
+
+export function salvarCodigo(codigo, armazenamento = typeof window !== 'undefined' ? window.localStorage : null) {
+  gravarChave(armazenamento, CHAVE_CODIGO, codigo)
+}
+
+export function esquecerCodigo(armazenamento = typeof window !== 'undefined' ? window.localStorage : null) {
+  try {
+    armazenamento?.removeItem(CHAVE_CODIGO)
+  } catch {
+    // armazenamento bloqueado: nada a apagar
+  }
 }

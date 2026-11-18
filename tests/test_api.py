@@ -8,7 +8,7 @@ from app import app
 
 JPEG = b'\xff\xd8\xff\xe0' + b'0' * 100
 PNG = b'\x89PNG\r\n\x1a\n' + b'0' * 100
-JSON = {'Accept': 'application/json'}
+JSON = {'Accept': 'application/json', 'X-Codigo-Acesso': 'ABCD-EFGH-JKLM'}
 
 
 @pytest.fixture

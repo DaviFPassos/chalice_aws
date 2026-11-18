@@ -4,7 +4,7 @@ import io
 import pytest
 from botocore.exceptions import ClientError
 
-from chalicelib import clientes
+from chalicelib import acesso, clientes
 
 
 class FakeS3:
@@ -73,6 +73,18 @@ class FakeTranslate:
         return {'TranslatedText': traduzido, 'SourceLanguageCode': origem}
 
 
+class FakeSSM:
+    def __init__(self):
+        self.valor = 'ABCD-EFGH-JKLM'
+        self.chamadas = 0
+
+    def get_parameter(self, Name, WithDecryption):
+        self.chamadas += 1
+        if self.valor is None:
+            raise ClientError({'Error': {'Code': 'ParameterNotFound', 'Message': 'x'}}, 'GetParameter')
+        return {'Parameter': {'Name': Name, 'Value': self.valor}}
+
+
 class FakePolly:
     def __init__(self):
         self.chamadas = []
@@ -89,8 +101,11 @@ def aws():
         'rekognition': FakeRekognition(),
         'translate': FakeTranslate(),
         'polly': FakePolly(),
+        'ssm': FakeSSM(),
     }
+    acesso.limpar_cache()
     for servico, fake in fakes.items():
         clientes.definir_cliente(servico, fake)
     yield fakes
     clientes.limpar()
+    acesso.limpar_cache()
