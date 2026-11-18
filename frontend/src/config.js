@@ -1,6 +1,7 @@
 // Descobre a URL da API, nesta ordem:
 //   1. parâmetro ?api= na URL da página (útil depois de um novo `chalice deploy`,
-//      que gera uma URL nova) — fica salvo no navegador para as próximas visitas;
+//      que gera uma URL nova) — fica salvo no navegador para as próximas visitas.
+//      Só são aceitos endereços da API Gateway do projeto (região sa-east-1);
 //   2. URL salva anteriormente no navegador;
 //   3. VITE_API_URL definida no build;
 //   4. '/api/' (desenvolvimento, com o proxy do Vite).
@@ -30,12 +31,23 @@ function gravarChave(armazenamento, chave, valor) {
 const lerSalvo = (armazenamento) => lerChave(armazenamento, CHAVE)
 const salvar = (armazenamento, valor) => gravarChave(armazenamento, CHAVE, valor)
 
+// Endereços da API Gateway do projeto: https://<id>.execute-api.sa-east-1.amazonaws.com/...
+const HOST_API = /^[a-z0-9]+\.execute-api\.sa-east-1\.amazonaws\.com$/
+
 export function urlValida(valor) {
   try {
     const url = new URL(valor)
-    return url.protocol === 'https:'
+    return url.protocol === 'https:' && HOST_API.test(url.hostname) && !url.username && !url.password
   } catch {
     return false
+  }
+}
+
+function apagarChave(armazenamento, chave) {
+  try {
+    armazenamento?.removeItem(chave)
+  } catch {
+    // armazenamento bloqueado: nada a apagar
   }
 }
 
@@ -51,6 +63,7 @@ export function obterApiBase({
   }
   const salvo = lerSalvo(armazenamento)
   if (salvo && urlValida(salvo)) return comBarra(salvo)
+  if (salvo) apagarChave(armazenamento, CHAVE) // valor salvo fora do padrão: descarta
   if (padrao) return comBarra(padrao)
   return '/api/'
 }

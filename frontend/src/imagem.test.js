@@ -35,7 +35,11 @@ describe('precisaPreparar', () => {
 describe('obterApiBase', () => {
   const memoria = () => {
     const dados = {}
-    return { getItem: (k) => dados[k] ?? null, setItem: (k, v) => { dados[k] = v } }
+    return {
+      getItem: (k) => dados[k] ?? null,
+      setItem: (k, v) => { dados[k] = v },
+      removeItem: (k) => { delete dados[k] },
+    }
   }
 
   it('usa ?api= da URL e salva para as próximas visitas', () => {
@@ -44,9 +48,23 @@ describe('obterApiBase', () => {
     expect(obterApiBase({ busca: `?api=${url}`, armazenamento, padrao: '' })).toBe(`${url}/`)
     expect(obterApiBase({ busca: '', armazenamento, padrao: '' })).toBe(`${url}/`)
   })
-  it('ignora ?api= que não seja https', () => {
-    expect(obterApiBase({ busca: '?api=javascript:alert(1)', armazenamento: memoria(), padrao: '' })).toBe('/api/')
-    expect(urlValida('http://inseguro.com')).toBe(false)
+  it('aceita só endereços da API Gateway do projeto', () => {
+    expect(urlValida('https://qm82xfemyc.execute-api.sa-east-1.amazonaws.com/api/')).toBe(true)
+    expect(urlValida('http://qm82xfemyc.execute-api.sa-east-1.amazonaws.com/api/')).toBe(false)
+    expect(urlValida('https://exemplo.com/api/')).toBe(false)
+    expect(urlValida('https://abc.execute-api.us-east-1.amazonaws.com/api/')).toBe(false)
+    expect(urlValida('https://abc.execute-api.sa-east-1.amazonaws.com.exemplo.com/')).toBe(false)
+    expect(urlValida('https://user:x@abc.execute-api.sa-east-1.amazonaws.com/')).toBe(false)
+    expect(urlValida('javascript:alert(1)')).toBe(false)
+    expect(obterApiBase({ busca: '?api=https://exemplo.com/api', armazenamento: memoria(), padrao: '' })).toBe('/api/')
+  })
+
+  it('descarta um endereço salvo fora do padrão', () => {
+    const armazenamento = memoria()
+    armazenamento.setItem('leitor-placas:api', 'https://exemplo.com/api/')
+    expect(obterApiBase({ busca: '', armazenamento, padrao: 'https://abc.execute-api.sa-east-1.amazonaws.com/api' }))
+      .toBe('https://abc.execute-api.sa-east-1.amazonaws.com/api/')
+    expect(armazenamento.getItem('leitor-placas:api')).toBeNull()
   })
   it('usa a URL do build ou o proxy de desenvolvimento', () => {
     expect(obterApiBase({ busca: '', armazenamento: memoria(), padrao: 'https://x.com/api' })).toBe('https://x.com/api/')
