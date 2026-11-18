@@ -1,14 +1,14 @@
-"""Amazon Translate: detecção automática do idioma e tradução para português."""
+"""Amazon Translate: tradução para português (idioma de origem informado)."""
 from chalicelib import clientes, config
 
 
-def traduzir(texto, origem='auto'):
-    """Traduz ``texto`` para português.
+def traduzir(texto, origem):
+    """Traduz ``texto`` do idioma ``origem`` (ex.: 'de', 'ru', 'ar') para português.
 
-    Retorna ``(texto_traduzido, codigo_idioma_origem)``. Com ``origem='auto'`` o
-    Translate detecta o idioma (internamente usa o Amazon Comprehend).
+    Retorna ``(texto_traduzido, codigo_idioma_origem)``. A origem é sempre explícita:
+    o modo ``'auto'`` dependeria do Amazon Comprehend.
     """
-    if not texto.strip():
+    if not texto.strip() or not origem:
         return '', None
     resposta = clientes.obter('translate').translate_text(
         Text=texto,

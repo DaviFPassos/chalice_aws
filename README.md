@@ -33,8 +33,8 @@ informação **falada em português**.
 3. A Lambda encadeia os serviços de IA:
    - **Rekognition** extrai o texto da imagem (`DetectText`) e descreve a cena
      (`DetectLabels`: "monumento", "igreja", "rua"...);
-   - **Translate** detecta o idioma automaticamente e traduz o texto e a descrição da
-     cena para o português;
+   - o idioma é identificado pelo **alfabeto** do texto (árabe, cirílico ou latino);
+   - **Translate** traduz o texto e a descrição da cena para o português;
    - **Polly** gera dois MP3: a **narração em português** (voz Camila) e a
      **pronúncia original** do texto (voz do idioma detectado: Vicki, Tatyana ou Zeina).
 4. O resultado (JSON + áudios) é salvo no S3 e consultado em `GET /imagens/{id}`.
@@ -98,8 +98,7 @@ Usuário → API Gateway → Lambda (api_handler) → S3 uploads/
   - **Deploy:** Lambda, API Gateway, IAM (criar role e `iam:PassRole`), S3 (criar bucket e
     `s3:PutBucketNotification`) e CloudWatch Logs;
   - **Testes manuais contra a AWS:** `rekognition:DetectText`, `rekognition:DetectLabels`,
-    `translate:TranslateText`, `comprehend:DetectDominantLanguage` e
-    `polly:SynthesizeSpeech`.
+    `translate:TranslateText` e `polly:SynthesizeSpeech`.
 
 > **Nunca** compartilhe chaves de acesso entre os integrantes. Cada pessoa usa a própria
 > conta ou um usuário IAM próprio. As credenciais ficam em `~/.aws/`, fora do repositório.
@@ -179,7 +178,8 @@ em `tests/conftest.py`.
 python -m pytest -v
 ```
 
-Cobrem: placas em alemão, russo e árabe (escolha da voz correta), texto com baixa
+Cobrem: detecção do idioma pelo alfabeto (inclusive placas bilíngues), placas em alemão,
+russo e árabe (escolha da voz correta), texto com baixa
 confiança, imagem sem texto, validação de envio (formato, tamanho, base64), rotas da
 API, disparo pelo evento do S3 e registro de erro no processamento.
 
