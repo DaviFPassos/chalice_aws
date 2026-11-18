@@ -89,12 +89,13 @@ API Gateway → Lambda (api_handler) → S3 uploads/
 │   └── policy-dev.json          # permissões IAM mínimas da Lambda
 ├── scripts/
 │   ├── criar_bucket.sh          # cria o bucket S3 (privado, expiração de 7 dias)
+│   ├── gerar_imagens_exemplo.py # gera as placas de exemplo em testes/imagens/
 │   ├── limitar_api.sh           # limita a taxa de requisições da API Gateway
 │   ├── testar_api.py            # envia imagens à API implantada e salva os resultados
 │   └── remover_tudo.sh          # remove a aplicação e o bucket da AWS
 ├── tests/                       # testes automatizados (pytest, sem acessar a AWS)
 ├── testes/
-│   ├── imagens/                 # imagens de entrada usadas nos testes
+│   ├── imagens/                 # imagens de entrada (12 exemplos em alemão, russo e árabe)
 │   └── resultados/              # JSON e MP3 produzidos pela aplicação
 ├── docs/arquitetura.md          # projeto de arquitetura
 ├── docs/custos.md               # levantamento de custos e limites de uso
@@ -212,8 +213,11 @@ russo e árabe (escolha da voz correta), texto com baixa
 confiança, imagem sem texto, validação de envio (formato e tamanho), rotas da
 API, disparo pelo evento do S3 e registro de erro no processamento.
 
-**Na AWS (aplicação implantada):** coloque as fotos em `testes/imagens/` (sugestões em
-[`testes/imagens/LEIAME.md`](testes/imagens/LEIAME.md)) e rode:
+**Na AWS (aplicação implantada):** a pasta `testes/imagens/` já traz **12 imagens de
+exemplo** (placas em alemão, russo e árabe, uma bilíngue, uma sem texto e uma de baixa
+qualidade), geradas por `scripts/gerar_imagens_exemplo.py`. A lista, com a tradução
+esperada de cada uma, está em [`testes/imagens/LEIAME.md`](testes/imagens/LEIAME.md).
+Acrescente fotos reais na mesma pasta e rode:
 
 ```bash
 python scripts/testar_api.py $(chalice url)
