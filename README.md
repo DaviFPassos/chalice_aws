@@ -1,122 +1,228 @@
-# chalice_aws
+# Leitor de Placas com Voz
 
-API REST serverless construída com [AWS Chalice](https://aws.github.io/chalice/), seguindo o tutorial oficial
-[REST API Tutorial](https://aws.github.io/chalice/tutorials/basicrestapi.html).
+**Trabalho IV — Desenvolvimento de uma Aplicação Serverless com Serviços de IA da AWS**
 
-O Chalice gera e implanta automaticamente uma função **AWS Lambda** e uma **API Gateway (REST API)**
-a partir do código em `app.py`.
+Aplicação serverless que recebe a foto de uma placa, monumento ou local com texto em
+**árabe, russo ou alemão**, extrai o texto, traduz para o português e devolve um
+**áudio narrado**, além da pronúncia do texto no idioma original.
 
-Cada passo do tutorial foi registrado em um commit separado (`git log` para acompanhar a evolução).
-Nos passos 6 a 9 o tutorial original substitui o `app.py` inteiro; aqui eles foram incorporados como
-rotas novas no mesmo app, para que todos os exemplos fiquem disponíveis em um único deploy.
+Construída com **AWS Chalice** e implantada no **AWS Lambda**, com arquitetura
+**orientada a eventos** e três serviços de IA encadeados: **Amazon Rekognition →
+Amazon Translate → Amazon Polly**.
 
-## Estrutura
+## Equipe
+
+| Nome | Matrícula |
+|---|---|
+| _Nome completo_ | _Matrícula_ |
+| _Nome completo_ | _Matrícula_ |
+| _Nome completo_ | _Matrícula_ |
+
+## Problema
+
+Turistas, estudantes de intercâmbio e pessoas com deficiência visual têm dificuldade
+para entender placas, avisos e inscrições em idiomas e alfabetos diferentes (cirílico,
+árabe) ou com caracteres especiais (alemão). A aplicação transforma uma foto em
+informação **falada em português**.
+
+## Como funciona
+
+1. O usuário envia a foto pela página web ou pela API (`POST /imagens`).
+2. A imagem é gravada no **Amazon S3**, e o upload **dispara uma Lambda** (evento
+   `s3:ObjectCreated`).
+3. A Lambda encadeia os serviços de IA:
+   - **Rekognition** extrai o texto da imagem (`DetectText`) e descreve a cena
+     (`DetectLabels`: "monumento", "igreja", "rua"...);
+   - **Translate** detecta o idioma automaticamente e traduz o texto e a descrição da
+     cena para o português;
+   - **Polly** gera dois MP3: a **narração em português** (voz Camila) e a
+     **pronúncia original** do texto (voz do idioma detectado: Vicki, Tatyana ou Zeina).
+4. O resultado (JSON + áudios) é salvo no S3 e consultado em `GET /imagens/{id}`.
+
+Exemplo de narração gerada:
+> "Na imagem há: monumento, arquitetura, céu. Foi encontrado um texto em alemão. Em
+> português, ele diz: Portão de Brandemburgo"
+
+## Arquitetura
+
+Diagrama, componentes, regiões e detalhes do encadeamento em
+[`docs/arquitetura.md`](docs/arquitetura.md).
+
+```
+Usuário → API Gateway → Lambda (api_handler) → S3 uploads/
+                                                  │ evento s3:ObjectCreated
+                                                  ▼
+                       Lambda (ao_enviar_imagem) → Rekognition → Translate → Polly
+                                                  │
+                                                  ▼
+                              S3 resultados/ + audios/ → GET /imagens/{id}
+```
+
+## Estrutura do projeto
 
 ```
 .
-├── .chalice/config.json   # configuração do Chalice (app_name, stages)
-├── app.py                 # código da API
-├── requirements.txt       # dependências que vão para a Lambda (vazio)
-├── requirements-dev.txt   # ferramentas de desenvolvimento (chalice, httpie, pytest)
-├── pytest.ini             # configuração do pytest
-├── tests/test_app.py      # testes automatizados das rotas
-└── README.md
+├── app.py                       # rotas da API + handler do evento do S3
+├── chalicelib/                  # módulos empacotados junto com a Lambda
+│   ├── pipeline.py              # encadeamento Rekognition → Translate → Polly
+│   ├── visao.py                 # Amazon Rekognition
+│   ├── traducao.py              # Amazon Translate
+│   ├── voz.py                   # Amazon Polly
+│   ├── armazenamento.py         # Amazon S3
+│   ├── idiomas.py               # nomes dos idiomas e vozes do Polly
+│   ├── clientes.py              # clientes boto3 (por região)
+│   ├── config.py                # configurações e limites
+│   └── pagina.py                # página web da demonstração
+├── .chalice/
+│   ├── config.json              # app_name, variáveis de ambiente, timeouts
+│   └── policy-dev.json          # permissões IAM mínimas da Lambda
+├── scripts/
+│   ├── criar_bucket.sh          # cria o bucket S3 (privado, expiração de 7 dias)
+│   ├── testar_api.py            # envia imagens à API implantada e salva os resultados
+│   └── remover_tudo.sh          # remove a aplicação e o bucket da AWS
+├── tests/                       # testes automatizados (pytest, sem acessar a AWS)
+├── testes/
+│   ├── imagens/                 # imagens de entrada usadas nos testes
+│   └── resultados/              # JSON e MP3 produzidos pela aplicação
+├── docs/arquitetura.md          # projeto de arquitetura
+├── requirements.txt             # dependências da Lambda (vazio: boto3 já vem no runtime)
+└── requirements-dev.txt         # dependências de desenvolvimento
 ```
 
 ## Pré-requisitos
 
-- Python 3.12 (o runtime da Lambda segue a versão do Python local)
-- Credenciais AWS configuradas (`aws configure`) com permissão para criar IAM Role, Lambda e API Gateway
+- Python 3.12
+- AWS CLI configurada (`aws configure`) na região `sa-east-1`
+- Permissões do usuário IAM que faz o deploy:
+  - **Deploy:** Lambda, API Gateway, IAM (criar role e `iam:PassRole`), S3 (criar bucket e
+    `s3:PutBucketNotification`) e CloudWatch Logs;
+  - **Testes manuais contra a AWS:** `rekognition:DetectText`, `rekognition:DetectLabels`,
+    `translate:TranslateText`, `comprehend:DetectDominantLanguage` e
+    `polly:SynthesizeSpeech`.
 
-Para conferir as credenciais:
+> **Nunca** compartilhe chaves de acesso entre os integrantes. Cada pessoa usa a própria
+> conta ou um usuário IAM próprio. As credenciais ficam em `~/.aws/`, fora do repositório.
+
+## Implantação
 
 ```bash
-aws configure list
-aws sts get-caller-identity
-```
-
-## Instalação
-
-```bash
+# 1. Ambiente
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
+
+# 2. Bucket S3 (uma única vez). O nome está em .chalice/config.json -> BUCKET_NAME;
+#    nomes de bucket são globais: se já existir, troque o nome no config.json e no
+#    .chalice/policy-dev.json.
+./scripts/criar_bucket.sh
+
+# 3. Deploy (cria as duas Lambdas, a API Gateway, a role e a notificação do bucket)
+chalice deploy
+chalice url          # URL da API
 ```
 
-## Executar localmente
+## Execução
+
+**Página web:** abra no navegador a URL exibida por `chalice url`, escolha uma foto e
+clique em "Ler e traduzir".
+
+**API REST:**
 
 ```bash
-chalice local          # sobe em http://127.0.0.1:8000
-curl http://127.0.0.1:8000/
+API=$(chalice url)
+
+# Enviar uma foto (JPEG ou PNG, até 5 MB) -> 202 {"id": "...", "status": "processando"}
+curl -X POST -H 'Content-Type: image/jpeg' --data-binary @testes/imagens/foto.jpg ${API}imagens
+
+# Alternativa em JSON com base64
+curl -X POST -H 'Content-Type: application/json' \
+     -d "{\"imagem_base64\": \"$(base64 -w0 foto.png)\"}" ${API}imagens
+
+# Consultar o resultado -> 202 enquanto processa; 200 com texto, tradução, cena e áudios
+curl ${API}imagens/<id>
 ```
 
+| Método | Rota | Resposta |
+|---|---|---|
+| GET | `/` | Página web da aplicação |
+| POST | `/imagens` | `202` com o `id`; `400` se o formato for inválido ou a imagem passar de 5 MB |
+| GET | `/imagens/{id}` | `202` processando · `200` resultado · `404` inexistente · `400` id inválido |
+
+Resultado (`200`):
+
+```json
+{
+  "id": "3f2a...",
+  "status": "concluido",
+  "idioma_detectado": "de",
+  "texto_original": "Brandenburger Tor",
+  "texto_traduzido": "Portão de Brandemburgo",
+  "cena": [{"rotulo": "Monument", "rotulo_pt": "monumento", "confianca": 95.0}],
+  "narracao": "Na imagem há: monumento. Foi encontrado um texto em alemão. ...",
+  "audios_url": {
+    "narracao_pt": "https://...s3...narracao_pt.mp3?...",
+    "pronuncia_original": "https://...s3...pronuncia_original.mp3?..."
+  }
+}
+```
+
+Os links dos áudios são temporários (1 hora). Logs: `chalice logs --name ao_enviar_imagem`.
+
 ## Testes
+
+**Automatizados (sem AWS e sem custo):** os serviços são substituídos por versões falsas
+em `tests/conftest.py`.
 
 ```bash
 python -m pytest -v
 ```
 
-Os testes usam o `chalice.test.Client`, que executa as rotas em memória (sem servidor e sem AWS).
-Como `application/json` está em `binary_types` (rota `/gzip`), as requisições de teste enviam
-`Accept: application/json`.
+Cobrem: placas em alemão, russo e árabe (escolha da voz correta), texto com baixa
+confiança, imagem sem texto, validação de envio (formato, tamanho, base64), rotas da
+API, disparo pelo evento do S3 e registro de erro no processamento.
 
-## Deploy na AWS
-
-```bash
-chalice deploy         # cria/atualiza Lambda + API Gateway (stage "api")
-chalice url            # mostra a URL da API
-chalice logs           # logs da Lambda
-chalice delete         # remove todos os recursos da AWS
-```
-
-> O deploy do tutorial foi removido da AWS (`chalice delete`). Para testar, faça um novo
-> `chalice deploy` e use a URL exibida por `chalice url`.
-
-## Endpoints
-
-| Método | Rota | Passo do tutorial | Descrição |
-|---|---|---|---|
-| GET | `/` | 1 | Retorna `{"hello": "world"}` |
-| GET | `/cities/{city}` | 2–3 | Estado da cidade (`seattle`, `portland`); cidade desconhecida → `400 BadRequestError` |
-| PUT | `/resource/{value}` | 4 | Ecoa o valor recebido na URL |
-| GET, PUT | `/objects/{key}` | 5 | Armazena (PUT) e lê (GET) um JSON em memória; chave inexistente → `404` |
-| GET | `/introspect` | 5 | Devolve os metadados da requisição (`app.current_request.to_dict()`) |
-| POST | `/` | 6 | Aceita apenas `application/x-www-form-urlencoded`; JSON → `415` |
-| GET | `/custom-response` | 7 | Resposta customizada `text/plain` com `hello world!` |
-| GET | `/gzip` | 8 | JSON comprimido com GZIP (`Content-Encoding: gzip`) |
-| PUT | `/supports-cors` | 9 | CORS padrão (`cors=True`) |
-| GET | `/custom-cors` | 9 | CORS customizado com `CORSConfig` |
-| GET, OPTIONS | `/cors_multiple_origins` | 9 | CORS com múltiplas origens permitidas |
-
-## Exemplos de uso
+**Na AWS (aplicação implantada):** coloque as fotos em `testes/imagens/` (sugestões em
+[`testes/imagens/LEIAME.md`](testes/imagens/LEIAME.md)) e rode:
 
 ```bash
-API=$(chalice url)   # ex.: https://<id>.execute-api.sa-east-1.amazonaws.com/api/
-
-http $API/cities/seattle                       # {"state": "WA"}
-http $API/cities/vancouver                     # 400 BadRequestError
-http PUT $API/resource/foo                     # {"value": "foo"}
-
-http GET $API/objects/mykey                    # 404
-echo '{"foo": "bar"}' | http PUT $API/objects/mykey
-http GET $API/objects/mykey                    # {"mykey": {"foo": "bar"}}
-
-http "$API/introspect?query1=value1&query2=value2" 'X-TestHeader: Foo'
-
-http POST $API/ states=WA states=CA            # 415 (JSON não é aceito)
-http --form POST $API/ states=WA states=CA     # {"states": ["WA", "CA"]}
-
-http $API/custom-response                      # hello world!
-curl --compressed $API/gzip                    # {"hello": "world"}
-http OPTIONS $API/cors_multiple_origins Origin:http://allowed1.example.com
+python scripts/testar_api.py $(chalice url)
 ```
 
-## Observações
+Para cada imagem, o script grava em `testes/resultados/` o JSON da resposta e os MP3
+gerados.
 
-- `app.debug = True` está ativo para fins didáticos (stack traces nas respostas de erro).
-  Desative antes de usar em produção.
-- Os dados de `/objects/{key}` ficam na memória da Lambda e se perdem quando o container é reciclado.
-- Para a rota `/gzip`, `application/json` foi adicionado a `app.api.binary_types`, como no tutorial.
-- **Segurança:** nunca coloque chaves da AWS no código ou no `.chalice/config.json` (ele é versionado).
-  As credenciais ficam em `~/.aws/credentials`, fora do repositório. O `.gitignore` também ignora
-  `.chalice/deployed/` e `.chalice/deployments/` (contêm o ID da conta e ARNs), arquivos `.env`, chaves `*.pem`/`*.key` etc.
+## Resultados
+
+_A preencher após os testes na AWS: tabela com imagem, idioma detectado, texto extraído,
+tradução e observações (acertos, erros e limites)._
+
+## Vídeo de demonstração
+
+_Link do vídeo:_ a definir.
+
+## Limitações
+
+- O Rekognition `DetectText` lê até **100 palavras** por imagem e foi projetado para
+  inglês, árabe, russo, alemão, francês, italiano, português e espanhol. Não lê
+  mandarim, japonês ou tailandês.
+- No árabe (escrito da direita para a esquerda), a ordem das linhas retornada pode variar.
+- O Rekognition não identifica monumentos **pelo nome**, apenas a categoria ("monumento",
+  "igreja", "torre").
+- Fotos tremidas, escuras ou com texto inclinado reduzem a precisão.
+
+## Custos e segurança
+
+- O bucket é **privado** e os objetos expiram em **7 dias**. Os áudios são entregues por
+  URLs temporárias.
+- Cada imagem gera chamadas pagas ao Rekognition, Translate e Polly. Configure um alerta
+  no **AWS Budgets** e remova tudo após a avaliação:
+
+```bash
+./scripts/remover_tudo.sh
+```
+
+## Histórico
+
+O tutorial [REST API do Chalice](https://aws.github.io/chalice/tutorials/basicrestapi.html),
+usado como ponto de partida, está preservado na tag
+[`tutorial-basicrestapi`](https://github.com/DaviFPassos/chalice_aws/tree/tutorial-basicrestapi).
