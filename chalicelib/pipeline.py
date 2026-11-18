@@ -1,7 +1,7 @@
 """Encadeamento dos serviços de IA: Rekognition -> Translate -> Polly."""
 from datetime import datetime, timezone
 
-from chalicelib import armazenamento, config, traducao, visao, voz
+from chalicelib import armazenamento, config, idiomas, traducao, visao, voz
 
 
 def processar_imagem(chave_imagem):
@@ -14,8 +14,9 @@ def processar_imagem(chave_imagem):
     rotulos = visao.identificar_cena(bucket, chave_imagem)
     texto_original = '\n'.join(linha['texto'] for linha in linhas)
 
-    # 2. Translate: texto (idioma detectado automaticamente) e rótulos (inglês)
-    texto_traduzido, idioma_origem = traducao.traduzir(texto_original)
+    # 2. Idioma pelo alfabeto + Translate: texto da placa e rótulos (inglês)
+    idioma_origem = idiomas.detectar_por_alfabeto(texto_original)
+    texto_traduzido, _ = traducao.traduzir(texto_original, idioma_origem)
     rotulos_pt = traducao.traduzir_rotulos([r['rotulo'] for r in rotulos])
 
     # 3. Polly: narração em português + pronúncia do texto original

@@ -46,16 +46,16 @@ class FakeRekognition:
 
 
 class FakeTranslate:
-    """Traduz por dicionário; o idioma de origem 'auto' vem de ``idioma_detectado``."""
+    """Traduz por dicionário. Recusa o modo 'auto' (dependeria do Comprehend)."""
 
     def __init__(self):
         self.dicionario = {}
-        self.idioma_detectado = 'de'
         self.chamadas = []
 
     def translate_text(self, Text, SourceLanguageCode, TargetLanguageCode):
+        assert SourceLanguageCode != 'auto', "o projeto não usa SourceLanguageCode='auto'"
         self.chamadas.append((Text, SourceLanguageCode))
-        origem = self.idioma_detectado if SourceLanguageCode == 'auto' else SourceLanguageCode
+        origem = SourceLanguageCode
         traduzido = '\n'.join(self.dicionario.get(linha, linha) for linha in Text.split('\n'))
         return {'TranslatedText': traduzido, 'SourceLanguageCode': origem}
 
