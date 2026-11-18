@@ -1,0 +1,44 @@
+{
+  "id": "bbe930e8c3e24491a8a1f32f25b95673",
+  "status": "concluido",
+  "imagem": "uploads/bbe930e8c3e24491a8a1f32f25b95673.jpg",
+  "processado_em": "2026-11-18T01:48:40.967084+00:00",
+  "idioma_detectado": "ar",
+  "texto_original": "المتحف المصري",
+  "linhas": [
+    {
+      "texto": "المتحف المصري",
+      "confianca": 94.8
+    }
+  ],
+  "texto_traduzido": "O Museu Egípcio",
+  "cena": [
+    {
+      "rotulo": "Logo",
+      "rotulo_pt": "logotipo",
+      "confianca": 98.4
+    },
+    {
+      "rotulo": "Text",
+      "rotulo_pt": "texto",
+      "confianca": 83.9
+    },
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 75.9
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 75.9
+    }
+  ],
+  "narracao": "Na imagem há: logotipo, texto, placa, símbolo. Foi encontrado um texto em árabe. Em português, ele diz: O Museu Egípcio",
+  "audios": {
+    "narracao_pt": "audios/bbe930e8c3e24491a8a1f32f25b95673/narracao_pt.mp3",
+    "pronuncia_original": "audios/bbe930e8c3e24491a8a1f32f25b95673/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "arabe_museu.jpg",
+  "tempo_total_segundos": 4.0
+}

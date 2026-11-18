@@ -1,0 +1,44 @@
+{
+  "id": "54259d6ab0d64d0d84aa9b7375cd468e",
+  "status": "concluido",
+  "imagem": "uploads/54259d6ab0d64d0d84aa9b7375cd468e.jpg",
+  "processado_em": "2026-11-18T01:51:23.613257+00:00",
+  "idioma_detectado": "ru",
+  "texto_original": "Скользкий пол",
+  "linhas": [
+    {
+      "texto": "Скользкий пол",
+      "confianca": 96.0
+    }
+  ],
+  "texto_traduzido": "Piso escorregadio",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 99.9
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 99.9
+    },
+    {
+      "rotulo": "Road Sign",
+      "rotulo_pt": "sinal de trânsito",
+      "confianca": 81.7
+    },
+    {
+      "rotulo": "Text",
+      "rotulo_pt": "texto",
+      "confianca": 80.3
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, sinal de trânsito, texto. Foi encontrado um texto em russo. Em português, ele diz: Piso escorregadio",
+  "audios": {
+    "narracao_pt": "audios/54259d6ab0d64d0d84aa9b7375cd468e/narracao_pt.mp3",
+    "pronuncia_original": "audios/54259d6ab0d64d0d84aa9b7375cd468e/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "russo_cuidado_piso.jpg",
+  "tempo_total_segundos": 4.4
+}

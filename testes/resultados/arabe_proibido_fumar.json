@@ -1,0 +1,39 @@
+{
+  "id": "963ea4977d854eaeab611f35c91f9c8f",
+  "status": "concluido",
+  "imagem": "uploads/963ea4977d854eaeab611f35c91f9c8f.jpg",
+  "processado_em": "2026-11-18T01:48:45.989715+00:00",
+  "idioma_detectado": "ar",
+  "texto_original": "ممنوع التدخين",
+  "linhas": [
+    {
+      "texto": "ممنوع التدخين",
+      "confianca": 97.8
+    }
+  ],
+  "texto_traduzido": "Proibido fumar",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 94.9
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 94.9
+    },
+    {
+      "rotulo": "Text",
+      "rotulo_pt": "texto",
+      "confianca": 89.6
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, texto. Foi encontrado um texto em árabe. Em português, ele diz: Proibido fumar",
+  "audios": {
+    "narracao_pt": "audios/963ea4977d854eaeab611f35c91f9c8f/narracao_pt.mp3",
+    "pronuncia_original": "audios/963ea4977d854eaeab611f35c91f9c8f/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "arabe_proibido_fumar.jpg",
+  "tempo_total_segundos": 3.9
+}

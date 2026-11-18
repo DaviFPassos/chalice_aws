@@ -1,0 +1,43 @@
+{
+  "id": "2061194a047e48b69c8d63a91feb285d",
+  "status": "concluido",
+  "imagem": "uploads/2061194a047e48b69c8d63a91feb285d.jpg",
+  "processado_em": "2026-11-18T01:49:08.173775+00:00",
+  "idioma_detectado": "ru",
+  "texto_original": "Выход в город\nКрасная площадь",
+  "linhas": [
+    {
+      "texto": "Выход в город",
+      "confianca": 83.7
+    },
+    {
+      "texto": "Красная площадь",
+      "confianca": 98.6
+    }
+  ],
+  "texto_traduzido": "Saia para a cidade\nPraça Vermelha",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 98.7
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 98.7
+    },
+    {
+      "rotulo": "Text",
+      "rotulo_pt": "texto",
+      "confianca": 85.3
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, texto. Foi encontrado um texto em russo. Em português, ele diz: Saia para a cidade\nPraça Vermelha",
+  "audios": {
+    "narracao_pt": "audios/2061194a047e48b69c8d63a91feb285d/narracao_pt.mp3",
+    "pronuncia_original": "audios/2061194a047e48b69c8d63a91feb285d/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "russo_metro.jpg",
+  "tempo_total_segundos": 3.9
+}

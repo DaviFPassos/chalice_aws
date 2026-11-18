@@ -1,0 +1,43 @@
+{
+  "id": "25332a98f7db4c9b9ebc0bb60c723bd7",
+  "status": "concluido",
+  "imagem": "uploads/25332a98f7db4c9b9ebc0bb60c723bd7.jpg",
+  "processado_em": "2026-11-18T01:48:25.234525+00:00",
+  "idioma_detectado": "de",
+  "texto_original": "Rauchen verboten\nBitte nicht rauchen",
+  "linhas": [
+    {
+      "texto": "Rauchen verboten",
+      "confianca": 99.5
+    },
+    {
+      "texto": "Bitte nicht rauchen",
+      "confianca": 99.9
+    }
+  ],
+  "texto_traduzido": "Proibido fumar\nPor favor, não fume",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 97.1
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 97.1
+    },
+    {
+      "rotulo": "Text",
+      "rotulo_pt": "texto",
+      "confianca": 90.4
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, texto. Foi encontrado um texto em alemão. Em português, ele diz: Proibido fumar\nPor favor, não fume",
+  "audios": {
+    "narracao_pt": "audios/25332a98f7db4c9b9ebc0bb60c723bd7/narracao_pt.mp3",
+    "pronuncia_original": "audios/25332a98f7db4c9b9ebc0bb60c723bd7/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "alemao_proibido_fumar.jpg",
+  "tempo_total_segundos": 4.0
+}
