@@ -1,0 +1,3 @@
+# boto3 recente: a cota de uso usa escrita condicional do S3 (IfMatch/IfNoneMatch),
+# que versões antigas do boto3 embutido no runtime da Lambda não aceitam.
+boto3>=1.36

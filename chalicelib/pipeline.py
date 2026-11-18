@@ -12,7 +12,7 @@ def processar_imagem(chave_imagem):
     # 1. Rekognition: texto e cena
     linhas = visao.extrair_texto(bucket, chave_imagem)
     rotulos = visao.identificar_cena(bucket, chave_imagem)
-    texto_original = '\n'.join(linha['texto'] for linha in linhas)
+    texto_original = '\n'.join(linha['texto'] for linha in linhas)[:config.MAX_CARACTERES_TEXTO]
 
     # 2. Translate: texto (idioma detectado automaticamente) e rótulos (inglês)
     texto_traduzido, idioma_origem = traducao.traduzir(texto_original)

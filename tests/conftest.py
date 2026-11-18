@@ -11,17 +11,30 @@ class FakeS3:
     def __init__(self):
         self.objetos = {}
 
-    def put_object(self, Bucket, Key, Body, ContentType):
-        self.objetos[Key] = {'corpo': Body, 'tipo': ContentType}
+    versao = 0
+    conflitos_simulados = 0   # quantas escritas condicionais devem falhar antes de aceitar
+
+    def put_object(self, Bucket, Key, Body, ContentType, IfMatch=None, IfNoneMatch=None):
+        atual = self.objetos.get(Key)
+        condicional = IfMatch is not None or IfNoneMatch is not None
+        if condicional and self.conflitos_simulados:
+            self.conflitos_simulados -= 1
+            raise ClientError({'Error': {'Code': 'PreconditionFailed', 'Message': 'x'}}, 'PutObject')
+        if (IfNoneMatch == '*' and atual) or (IfMatch and (not atual or atual['etag'] != IfMatch)):
+            raise ClientError({'Error': {'Code': 'PreconditionFailed', 'Message': 'x'}}, 'PutObject')
+        FakeS3.versao += 1
+        self.objetos[Key] = {'corpo': Body, 'tipo': ContentType, 'etag': f'"v{FakeS3.versao}"'}
 
     def get_object(self, Bucket, Key):
         if Key not in self.objetos:
             raise ClientError({'Error': {'Code': 'NoSuchKey', 'Message': 'x'}}, 'GetObject')
-        return {'Body': io.BytesIO(self.objetos[Key]['corpo'])}
+        obj = self.objetos[Key]
+        return {'Body': io.BytesIO(obj['corpo']), 'ETag': obj['etag']}
 
-    def list_objects_v2(self, Bucket, Prefix, MaxKeys):
-        n = sum(1 for k in self.objetos if k.startswith(Prefix))
-        return {'KeyCount': min(n, MaxKeys)}
+    def head_object(self, Bucket, Key):
+        if Key not in self.objetos:
+            raise ClientError({'Error': {'Code': '404', 'Message': 'Not Found'}}, 'HeadObject')
+        return {'ETag': self.objetos[Key]['etag']}
 
     def generate_presigned_url(self, operacao, Params, ExpiresIn):
         return f"https://s3.exemplo/{Params['Key']}?expira={ExpiresIn}"

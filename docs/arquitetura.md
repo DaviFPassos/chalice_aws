@@ -26,8 +26,8 @@ flowchart LR
 | Componente | Responsabilidade |
 |---|---|
 | **Amazon API Gateway** | Expõe a API REST (`GET /`, `POST /imagens`, `GET /imagens/{id}`) |
-| **AWS Lambda `api_handler`** | Valida a imagem (formato e tamanho), grava no S3, consulta resultados e gera URLs temporárias dos áudios. Também serve a página web |
-| **Amazon S3** | Guarda as imagens (`uploads/`), os resultados (`resultados/`) e os áudios (`audios/`). O upload em `uploads/` **gera o evento** que inicia o processamento. Bucket privado, com expiração dos objetos em 7 dias |
+| **AWS Lambda `api_handler`** | Valida a imagem (formato e tamanho), confere a cota de envios (30/dia, 300/mês — ver `docs/custos.md`), grava no S3, consulta resultados e gera URLs temporárias dos áudios. Também serve a página web |
+| **Amazon S3** | Guarda as imagens (`uploads/`), os resultados (`resultados/`) e os áudios (`audios/`). O upload em `uploads/` **gera o evento** que inicia o processamento. Bucket privado, com expiração dos objetos em 7 dias. Guarda também o contador de uso (`controle/`) |
 | **AWS Lambda `ao_enviar_imagem`** | Disparada pelo evento do S3. Encadeia os serviços de IA e grava o resultado |
 | **Amazon CloudWatch Logs** | Logs das duas Lambdas (`chalice logs`) |
 | **IAM Role** | Permissões mínimas definidas em `.chalice/policy-dev.json` |

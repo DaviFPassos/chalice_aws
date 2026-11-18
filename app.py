@@ -12,9 +12,10 @@ import logging
 import re
 import uuid
 
-from chalice import BadRequestError, Chalice, NotFoundError, Response
+from chalice import (BadRequestError, Chalice, NotFoundError, Response,
+                     TooManyRequestsError)
 
-from chalicelib import armazenamento, clientes, config, pagina, pipeline
+from chalicelib import armazenamento, config, cota, pagina, pipeline
 
 app = Chalice(app_name='leitor-placas')
 app.log.setLevel(logging.INFO)
@@ -64,6 +65,10 @@ def index():
            content_types=['image/jpeg', 'image/png', 'application/json'])
 def enviar_imagem():
     dados, extensao = _ler_imagem_da_requisicao(app.current_request)
+    try:
+        cota.reservar()
+    except cota.CotaExcedida as erro:
+        raise TooManyRequestsError(str(erro))
     id_imagem = uuid.uuid4().hex
     chave = armazenamento.chave_upload(id_imagem, extensao)
     tipo = 'image/png' if extensao == 'png' else 'image/jpeg'
@@ -82,12 +87,7 @@ def consultar_imagem(id_imagem):
 
     resultado = armazenamento.ler_resultado(id_imagem)
     if resultado is None:
-        enviados = clientes.obter('s3').list_objects_v2(
-            Bucket=config.BUCKET_NAME,
-            Prefix=f'{config.PREFIXO_UPLOADS}{id_imagem}.',
-            MaxKeys=1,
-        )
-        if enviados.get('KeyCount', 0) == 0:
+        if not armazenamento.upload_existe(id_imagem):
             raise NotFoundError(f'Imagem {id_imagem} não encontrada.')
         return Response(body={'id': id_imagem, 'status': 'processando'},
                         status_code=202)
