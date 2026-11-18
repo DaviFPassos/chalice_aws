@@ -69,8 +69,8 @@ chalice logs           # logs da Lambda
 chalice delete         # remove todos os recursos da AWS
 ```
 
-Deploy atual (região `sa-east-1`):
-`https://6og27bi5ki.execute-api.sa-east-1.amazonaws.com/api/`
+> O deploy do tutorial foi removido da AWS (`chalice delete`). Para testar, faça um novo
+> `chalice deploy` e use a URL exibida por `chalice url`.
 
 ## Endpoints
 
@@ -91,7 +91,7 @@ Deploy atual (região `sa-east-1`):
 ## Exemplos de uso
 
 ```bash
-API=https://6og27bi5ki.execute-api.sa-east-1.amazonaws.com/api
+API=$(chalice url)   # ex.: https://<id>.execute-api.sa-east-1.amazonaws.com/api/
 
 http $API/cities/seattle                       # {"state": "WA"}
 http $API/cities/vancouver                     # 400 BadRequestError
