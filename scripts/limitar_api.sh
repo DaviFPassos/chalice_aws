@@ -3,8 +3,8 @@
 # Rode depois de cada `chalice deploy`. Valores: RATE req/s e BURST simultâneas.
 set -euo pipefail
 
-RATE=${RATE:-2}
-BURST=${BURST:-5}
+RATE=${RATE:-1}
+BURST=${BURST:-2}
 APP=$(python3 -c "import json; print(json.load(open('.chalice/config.json'))['app_name'])")
 API_ID=$(aws apigateway get-rest-apis --query "items[?name=='$APP'].id | [0]" --output text)
 

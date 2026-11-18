@@ -48,6 +48,23 @@ def ler_resultado(id_imagem):
     return json.loads(resposta['Body'].read())
 
 
+def upload_existe(id_imagem):
+    """Confere se a imagem foi enviada (.jpg ou .png).
+
+    Usa HEAD em vez de listar o bucket: no S3, LIST custa ~12x mais que GET/HEAD, e esta
+    rota é pública (ver docs/custos.md).
+    """
+    s3 = clientes.obter('s3')
+    for extensao in ('jpg', 'png'):
+        try:
+            s3.head_object(Bucket=config.BUCKET_NAME, Key=chave_upload(id_imagem, extensao))
+            return True
+        except ClientError as erro:
+            if erro.response['Error']['Code'] not in ('404', 'NoSuchKey', 'NotFound'):
+                raise
+    return False
+
+
 def url_temporaria(chave):
     return clientes.obter('s3').generate_presigned_url(
         'get_object',

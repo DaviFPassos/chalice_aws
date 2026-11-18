@@ -1,5 +1,5 @@
 """Amazon Polly: narração em português e pronúncia do texto original."""
-from chalicelib import clientes, idiomas
+from chalicelib import clientes, config, idiomas
 
 SAMPLE_RATE = '22050'
 
@@ -10,6 +10,7 @@ def sintetizar(texto, idioma):
     if not texto.strip() or voz is None:
         return None
     voice_id, engine, language_code = voz
+    texto = texto[:config.MAX_CARACTERES_NARRACAO]  # limite de custo do Polly
     resposta = clientes.obter('polly').synthesize_speech(
         Text=texto,
         OutputFormat='mp3',
