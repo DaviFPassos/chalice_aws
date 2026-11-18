@@ -17,7 +17,6 @@ def _resultado(aws):
 def test_placa_em_alemao(aws):
     aws['rekognition'].linhas = [('Brandenburger Tor', 99.1)]
     aws['rekognition'].rotulos = [('Monument', 95.0), ('Architecture', 90.0)]
-    aws['translate'].idioma_detectado = 'de'
     aws['translate'].dicionario = {
         'Brandenburger Tor': 'Portão de Brandemburgo',
         'Monument': 'Monumento', 'Architecture': 'Arquitetura',
@@ -41,7 +40,6 @@ def test_placa_em_alemao(aws):
 
 def test_placa_em_russo_usa_voz_russa(aws):
     aws['rekognition'].linhas = [('Красная площадь', 97.0)]
-    aws['translate'].idioma_detectado = 'ru'
     aws['translate'].dicionario = {'Красная площадь': 'Praça Vermelha'}
 
     r = pipeline.processar_imagem(CHAVE)
@@ -53,7 +51,6 @@ def test_placa_em_russo_usa_voz_russa(aws):
 
 def test_placa_em_arabe_varias_linhas(aws):
     aws['rekognition'].linhas = [('المتحف المصري', 96.0), ('مفتوح', 92.0)]
-    aws['translate'].idioma_detectado = 'ar'
     aws['translate'].dicionario = {'المتحف المصري': 'Museu Egípcio', 'مفتوح': 'Aberto'}
 
     r = pipeline.processar_imagem(CHAVE)
@@ -81,7 +78,7 @@ def test_imagem_sem_texto(aws):
     assert 'Nenhum texto foi encontrado' in r['narracao']
     # Só a narração em português é gerada
     assert list(r['audios']) == ['narracao_pt']
-    # O texto vazio não é enviado ao Translate com origem automática
+    # Sem texto, só os rótulos (em inglês) vão para o Translate
     assert all(origem == 'en' for _, origem in aws['translate'].chamadas)
 
 

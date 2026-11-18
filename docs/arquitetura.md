@@ -13,7 +13,7 @@ flowchart LR
     L1 -->|2. PutObject uploads/id.jpg| S3[(Amazon S3)]
     S3 -->|3. Evento s3:ObjectCreated| L2[AWS Lambda<br/>ao_enviar_imagem]
     L2 -->|4. DetectText + DetectLabels| REK[Amazon Rekognition]
-    L2 -->|5. TranslateText auto → pt| TR[Amazon Translate]
+    L2 -->|5. TranslateText ar/ru/de → pt| TR[Amazon Translate]
     L2 -->|6. SynthesizeSpeech| PO[Amazon Polly]
     L2 -->|7. resultados/id.json<br/>audios/id/*.mp3| S3
     U -->|8. GET /imagens/id| APIGW
@@ -38,14 +38,17 @@ flowchart LR
 |---|---|---|---|---|
 | 1 | **Rekognition `DetectText`** | Imagem no S3 | Linhas de texto (confiança ≥ 80%) | Entrada do Translate e da pronúncia original no Polly |
 | 1 | **Rekognition `DetectLabels`** | Imagem no S3 | Até 8 rótulos da cena, em inglês (confiança ≥ 75%) | Entrada do Translate |
-| 2 | **Translate** | Texto da placa (`auto`) e rótulos (`en`) | Texto em português e idioma detectado | Narração e escolha da voz da pronúncia original |
+| 2 | **Translate** | Texto da placa (idioma detectado pelo alfabeto) e rótulos (`en`) | Texto em português | Narração em português |
 | 3 | **Polly** | Narração em português + texto original | `narracao_pt.mp3` (Camila, neural) e `pronuncia_original.mp3` (voz do idioma detectado) | Resultado final para o usuário |
 
 Vozes da pronúncia original: alemão → Vicki (neural), russo → Tatyana (standard),
 árabe → Zeina (standard).
 
-Ao usar `SourceLanguageCode='auto'`, o Translate chama internamente o **Amazon Comprehend**
-(`DetectDominantLanguage`) para descobrir o idioma — por isso essa permissão está na política.
+**Detecção do idioma:** feita no próprio código, pelo alfabeto das letras extraídas
+(árabe → `ar`, cirílico → `ru`, latino → `de`), em `chalicelib/idiomas.py`. Alfabetos não
+latinos têm prioridade em placas bilíngues. O modo `SourceLanguageCode='auto'` do
+Translate não é usado porque depende do Amazon Comprehend, indisponível no plano Free
+da AWS. O idioma detectado define a origem da tradução e a voz da pronúncia original.
 
 ## Regiões
 
