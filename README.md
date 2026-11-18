@@ -257,7 +257,7 @@ por `scripts/gerar_imagens_exemplo.py`. O texto e a tradução esperada de cada 
 pasta e rode:
 
 ```bash
-export CODIGO_ACESSO=XXXX-XXXX-XXXX
+export CODIGO_ACESSO='XXXX-XXXX-XXXX'   # ou: source segredos/codigo-acesso.env
 python scripts/testar_api.py $(chalice url)
 ```
 
@@ -355,6 +355,9 @@ _Link do vídeo:_ a definir.
 - Rode `python -m pytest` e `cd frontend && npm test` antes de enviar.
 - Nunca versione credenciais, arquivos `.env` ou a pasta `.chalice/deployed/` (já estão
   no `.gitignore`). O repositório é público e tem *push protection* contra segredos.
+- Guarde o código de acesso e outros segredos locais na pasta `segredos/` (por exemplo,
+  `segredos/codigo-acesso.env` com `export CODIGO_ACESSO='...'`). Ela é ignorada pelo
+  `.gitignore` e nunca vai para o repositório.
 
 ## Histórico
 

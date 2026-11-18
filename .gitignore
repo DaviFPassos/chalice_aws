@@ -9,6 +9,8 @@
 .chalice/config.local.json
 
 # ===== Credenciais e segredos =====
+# Pasta local para códigos e chaves (ex.: segredos/codigo-acesso.env). Nunca versionar.
+segredos/
 .aws/
 credentials
 *.credentials
