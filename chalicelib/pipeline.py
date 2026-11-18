@@ -16,7 +16,8 @@ def processar_imagem(chave_imagem):
 
     # 2. Idioma pelo alfabeto + Translate: texto da placa e rótulos (inglês)
     idioma_origem = idiomas.detectar_por_alfabeto(texto_original)
-    texto_traduzido, _ = traducao.traduzir(texto_original, idioma_origem)
+    texto_para_traduzir = '\n'.join(traducao.juntar_continuacoes(texto_original.split('\n')))
+    texto_traduzido, _ = traducao.traduzir(texto_para_traduzir, idioma_origem)
     rotulos_pt = traducao.traduzir_rotulos([r['rotulo'] for r in rotulos])
 
     # 3. Polly: narração em português + pronúncia do texto original
