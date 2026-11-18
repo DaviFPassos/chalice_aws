@@ -14,6 +14,7 @@ IDIOMA_DESTINO = 'pt'
 PREFIXO_UPLOADS = 'uploads/'
 PREFIXO_RESULTADOS = 'resultados/'
 PREFIXO_AUDIOS = 'audios/'
+PREFIXO_CONTROLE = 'controle/'
 
 # Limites
 TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024        # 5 MB
@@ -21,6 +22,12 @@ CONFIANCA_MINIMA_TEXTO = 80.0                  # %
 CONFIANCA_MINIMA_ROTULOS = 75.0                # %
 MAXIMO_ROTULOS = 8
 VALIDADE_URL_AUDIO = 3600                      # segundos
+
+# Cota de uso para não sair dos créditos gratuitos (cálculo em docs/custos.md)
+LIMITE_ENVIOS_DIA = int(os.environ.get('LIMITE_ENVIOS_DIA', '30'))
+LIMITE_ENVIOS_MES = int(os.environ.get('LIMITE_ENVIOS_MES', '300'))
+MAX_CARACTERES_TEXTO = 1000     # texto extraído enviado ao Translate e ao Polly
+MAX_CARACTERES_NARRACAO = 1500  # narração em português enviada ao Polly
 
 TIPOS_ACEITOS = {
     'image/jpeg': 'jpg',

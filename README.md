@@ -33,8 +33,8 @@ informação **falada em português**.
 3. A Lambda encadeia os serviços de IA:
    - **Rekognition** extrai o texto da imagem (`DetectText`) e descreve a cena
      (`DetectLabels`: "monumento", "igreja", "rua"...);
-   - **Translate** detecta o idioma automaticamente e traduz o texto e a descrição da
-     cena para o português;
+   - o idioma é identificado pelo **alfabeto** do texto (árabe, cirílico ou latino);
+   - **Translate** traduz o texto e a descrição da cena para o português;
    - **Polly** gera dois MP3: a **narração em português** (voz Camila) e a
      **pronúncia original** do texto (voz do idioma detectado: Vicki, Tatyana ou Zeina).
 4. O resultado (JSON + áudios) é salvo no S3 e consultado em `GET /imagens/{id}`.
@@ -69,6 +69,7 @@ Usuário → API Gateway → Lambda (api_handler) → S3 uploads/
 │   ├── traducao.py              # Amazon Translate
 │   ├── voz.py                   # Amazon Polly
 │   ├── armazenamento.py         # Amazon S3
+│   ├── cota.py                  # limites diário e mensal de envios (custo zero)
 │   ├── idiomas.py               # nomes dos idiomas e vozes do Polly
 │   ├── clientes.py              # clientes boto3 (por região)
 │   ├── config.py                # configurações e limites
@@ -86,7 +87,8 @@ Usuário → API Gateway → Lambda (api_handler) → S3 uploads/
 │   ├── imagens/                 # imagens de entrada usadas nos testes
 │   └── resultados/              # JSON e MP3 produzidos pela aplicação
 ├── docs/arquitetura.md          # projeto de arquitetura
-├── requirements.txt             # dependências da Lambda (vazio: boto3 já vem no runtime)
+├── docs/custos.md               # levantamento de custos e limites de uso
+├── requirements.txt             # dependências da Lambda (boto3 recente, para escrita condicional no S3)
 └── requirements-dev.txt         # dependências de desenvolvimento
 ```
 
@@ -98,8 +100,7 @@ Usuário → API Gateway → Lambda (api_handler) → S3 uploads/
   - **Deploy:** Lambda, API Gateway, IAM (criar role e `iam:PassRole`), S3 (criar bucket e
     `s3:PutBucketNotification`) e CloudWatch Logs;
   - **Testes manuais contra a AWS:** `rekognition:DetectText`, `rekognition:DetectLabels`,
-    `translate:TranslateText`, `comprehend:DetectDominantLanguage` e
-    `polly:SynthesizeSpeech`.
+    `translate:TranslateText` e `polly:SynthesizeSpeech`.
 
 > **Nunca** compartilhe chaves de acesso entre os integrantes. Cada pessoa usa a própria
 > conta ou um usuário IAM próprio. As credenciais ficam em `~/.aws/`, fora do repositório.
@@ -119,7 +120,7 @@ pip install -r requirements-dev.txt
 
 # 3. Deploy (cria as duas Lambdas, a API Gateway, a role e a notificação do bucket)
 chalice deploy
-./scripts/limitar_api.sh   # limita a API a 2 req/s (rode após cada deploy)
+./scripts/limitar_api.sh   # limita a API a 1 req/s (rode após cada deploy)
 chalice url                # URL da API
 ```
 
@@ -136,9 +137,7 @@ API=$(chalice url)
 # Enviar uma foto (JPEG ou PNG, até 5 MB) -> 202 {"id": "...", "status": "processando"}
 curl -X POST -H 'Content-Type: image/jpeg' --data-binary @testes/imagens/foto.jpg ${API}imagens
 
-# Alternativa em JSON com base64
-curl -X POST -H 'Content-Type: application/json' \
-     -d "{\"imagem_base64\": \"$(base64 -w0 foto.png)\"}" ${API}imagens
+# PNG funciona igual, com Content-Type: image/png
 
 # Consultar o resultado -> 202 enquanto processa; 200 com texto, tradução, cena e áudios
 curl ${API}imagens/<id>
@@ -147,7 +146,7 @@ curl ${API}imagens/<id>
 | Método | Rota | Resposta |
 |---|---|---|
 | GET | `/` | Página web da aplicação |
-| POST | `/imagens` | `202` com o `id`; `400` se o formato for inválido ou a imagem passar de 5 MB |
+| POST | `/imagens` | `202` com o `id`; `400` se o formato for inválido ou a imagem passar de 5 MB; `429` se o limite diário/mensal foi atingido |
 | GET | `/imagens/{id}` | `202` processando · `200` resultado · `404` inexistente · `400` id inválido |
 
 Resultado (`200`):
@@ -179,8 +178,9 @@ em `tests/conftest.py`.
 python -m pytest -v
 ```
 
-Cobrem: placas em alemão, russo e árabe (escolha da voz correta), texto com baixa
-confiança, imagem sem texto, validação de envio (formato, tamanho, base64), rotas da
+Cobrem: detecção do idioma pelo alfabeto (inclusive placas bilíngues), placas em alemão,
+russo e árabe (escolha da voz correta), texto com baixa
+confiança, imagem sem texto, validação de envio (formato e tamanho), rotas da
 API, disparo pelo evento do S3 e registro de erro no processamento.
 
 **Na AWS (aplicação implantada):** coloque as fotos em `testes/imagens/` (sugestões em
@@ -222,9 +222,19 @@ _Link do vídeo:_ a definir.
   ARNs e o ID da conta) ficam só no CloudWatch Logs.
 - A Lambda usa uma política IAM mínima (`.chalice/policy-dev.json`), sem permissões
   geradas automaticamente.
-- A API é pública e cada imagem gera chamadas pagas ao Rekognition, Translate e Polly.
-  Por isso `scripts/limitar_api.sh` limita a taxa de requisições. Configure também um
-  alerta no **AWS Budgets** e remova tudo após a avaliação:
+- **Uso sem custo:** a API é pública e cada imagem consome créditos da AWS (Rekognition,
+  Translate e Polly). Para que o projeto nunca gere cobrança, a aplicação tem limites
+  definidos a partir de um levantamento de preços ([`docs/custos.md`](docs/custos.md)):
+
+  | Limite | Valor |
+  |---|---|
+  | Envios por dia / por mês | **30 / 300 imagens** (acima disso, `POST /imagens` responde `429`) |
+  | Taxa de requisições da API | 1 req/s (`scripts/limitar_api.sh`) |
+  | Texto enviado ao Translate / narração enviada ao Polly | 1.000 / 1.500 caracteres |
+
+  Mesmo com abuso máximo, o gasto fica em ~25% dos créditos por mês, e o Translate
+  em ~17% do teste gratuito. O uso real esperado é ~1% dos créditos.
+- Configure um alerta de **US$ 1** no **AWS Budgets** e remova tudo após a avaliação:
 
 ```bash
 ./scripts/remover_tudo.sh

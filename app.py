@@ -6,15 +6,14 @@ Fluxo orientado a eventos:
   3. A Lambda encadeia Rekognition -> Translate -> Polly e grava o resultado no S3.
   4. GET /imagens/{id} devolve o resultado com links temporários para os áudios.
 """
-import base64
-import binascii
 import logging
 import re
 import uuid
 
-from chalice import BadRequestError, Chalice, NotFoundError, Response
+from chalice import (BadRequestError, Chalice, NotFoundError, Response,
+                     TooManyRequestsError)
 
-from chalicelib import armazenamento, clientes, config, pagina, pipeline
+from chalicelib import armazenamento, config, cota, pagina, pipeline
 
 app = Chalice(app_name='leitor-placas')
 app.log.setLevel(logging.INFO)
@@ -34,15 +33,8 @@ def _detectar_formato(dados):
 
 
 def _ler_imagem_da_requisicao(requisicao):
-    tipo = (requisicao.headers.get('content-type') or '').split(';')[0].strip().lower()
-    if tipo == 'application/json':
-        corpo = requisicao.json_body or {}
-        try:
-            dados = base64.b64decode(corpo.get('imagem_base64', ''), validate=True)
-        except (binascii.Error, ValueError):
-            raise BadRequestError('Campo "imagem_base64" inválido.')
-    else:
-        dados = requisicao.raw_body or b''
+    # Só tipos binários: o Chalice não aceita misturar tipos binários e texto na mesma rota.
+    dados = requisicao.raw_body or b''
 
     if not dados:
         raise BadRequestError('Envie uma imagem JPEG ou PNG.')
@@ -61,9 +53,13 @@ def index():
 
 
 @app.route('/imagens', methods=['POST'],
-           content_types=['image/jpeg', 'image/png', 'application/json'])
+           content_types=['image/jpeg', 'image/png'])
 def enviar_imagem():
     dados, extensao = _ler_imagem_da_requisicao(app.current_request)
+    try:
+        cota.reservar()
+    except cota.CotaExcedida as erro:
+        raise TooManyRequestsError(str(erro))
     id_imagem = uuid.uuid4().hex
     chave = armazenamento.chave_upload(id_imagem, extensao)
     tipo = 'image/png' if extensao == 'png' else 'image/jpeg'
@@ -82,12 +78,7 @@ def consultar_imagem(id_imagem):
 
     resultado = armazenamento.ler_resultado(id_imagem)
     if resultado is None:
-        enviados = clientes.obter('s3').list_objects_v2(
-            Bucket=config.BUCKET_NAME,
-            Prefix=f'{config.PREFIXO_UPLOADS}{id_imagem}.',
-            MaxKeys=1,
-        )
-        if enviados.get('KeyCount', 0) == 0:
+        if not armazenamento.upload_existe(id_imagem):
             raise NotFoundError(f'Imagem {id_imagem} não encontrada.')
         return Response(body={'id': id_imagem, 'status': 'processando'},
                         status_code=202)
