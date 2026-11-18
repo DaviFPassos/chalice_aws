@@ -6,8 +6,6 @@ Fluxo orientado a eventos:
   3. A Lambda encadeia Rekognition -> Translate -> Polly e grava o resultado no S3.
   4. GET /imagens/{id} devolve o resultado com links temporários para os áudios.
 """
-import base64
-import binascii
 import logging
 import re
 import uuid
@@ -35,15 +33,8 @@ def _detectar_formato(dados):
 
 
 def _ler_imagem_da_requisicao(requisicao):
-    tipo = (requisicao.headers.get('content-type') or '').split(';')[0].strip().lower()
-    if tipo == 'application/json':
-        corpo = requisicao.json_body or {}
-        try:
-            dados = base64.b64decode(corpo.get('imagem_base64', ''), validate=True)
-        except (binascii.Error, ValueError):
-            raise BadRequestError('Campo "imagem_base64" inválido.')
-    else:
-        dados = requisicao.raw_body or b''
+    # Só tipos binários: o Chalice não aceita misturar tipos binários e texto na mesma rota.
+    dados = requisicao.raw_body or b''
 
     if not dados:
         raise BadRequestError('Envie uma imagem JPEG ou PNG.')
@@ -62,7 +53,7 @@ def index():
 
 
 @app.route('/imagens', methods=['POST'],
-           content_types=['image/jpeg', 'image/png', 'application/json'])
+           content_types=['image/jpeg', 'image/png'])
 def enviar_imagem():
     dados, extensao = _ler_imagem_da_requisicao(app.current_request)
     try:

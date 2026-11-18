@@ -137,9 +137,7 @@ API=$(chalice url)
 # Enviar uma foto (JPEG ou PNG, até 5 MB) -> 202 {"id": "...", "status": "processando"}
 curl -X POST -H 'Content-Type: image/jpeg' --data-binary @testes/imagens/foto.jpg ${API}imagens
 
-# Alternativa em JSON com base64
-curl -X POST -H 'Content-Type: application/json' \
-     -d "{\"imagem_base64\": \"$(base64 -w0 foto.png)\"}" ${API}imagens
+# PNG funciona igual, com Content-Type: image/png
 
 # Consultar o resultado -> 202 enquanto processa; 200 com texto, tradução, cena e áudios
 curl ${API}imagens/<id>
@@ -182,7 +180,7 @@ python -m pytest -v
 
 Cobrem: detecção do idioma pelo alfabeto (inclusive placas bilíngues), placas em alemão,
 russo e árabe (escolha da voz correta), texto com baixa
-confiança, imagem sem texto, validação de envio (formato, tamanho, base64), rotas da
+confiança, imagem sem texto, validação de envio (formato e tamanho), rotas da
 API, disparo pelo evento do S3 e registro de erro no processamento.
 
 **Na AWS (aplicação implantada):** coloque as fotos em `testes/imagens/` (sugestões em

@@ -1,5 +1,4 @@
 """Testes das rotas da API REST."""
-import base64
 import json
 
 import pytest
@@ -32,9 +31,8 @@ def test_envio_jpeg_salva_no_s3(client, aws):
     assert aws['s3'].objetos[f'uploads/{id_imagem}.jpg']['corpo'] == JPEG
 
 
-def test_envio_base64_png(client, aws):
-    corpo = json.dumps({'imagem_base64': base64.b64encode(PNG).decode()})
-    r = client.http.post('/imagens', body=corpo, headers={**JSON, 'Content-Type': 'application/json'})
+def test_envio_png(client, aws):
+    r = client.http.post('/imagens', body=PNG, headers={**JSON, 'Content-Type': 'image/png'})
     assert r.status_code == 202
     assert f"uploads/{r.json_body['id']}.png" in aws['s3'].objetos
 
@@ -42,7 +40,6 @@ def test_envio_base64_png(client, aws):
 @pytest.mark.parametrize('corpo, tipo', [
     (b'GIF89a...', 'image/png'),                         # assinatura não é JPEG/PNG
     (b'', 'image/jpeg'),                                 # vazio
-    (b'{"imagem_base64": "***"}', 'application/json'),   # base64 inválido
 ])
 def test_envio_invalido(client, aws, corpo, tipo):
     r = client.http.post('/imagens', body=corpo, headers={**JSON, 'Content-Type': tipo})
