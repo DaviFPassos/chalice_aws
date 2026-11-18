@@ -1,0 +1,58 @@
+{
+  "id": "a0781fbc8871489dacb706c8ddeda2b8",
+  "status": "concluido",
+  "imagem": "uploads/a0781fbc8871489dacb706c8ddeda2b8.jpg",
+  "processado_em": "2026-11-18T01:49:19.634544+00:00",
+  "idioma_detectado": null,
+  "texto_original": "",
+  "linhas": [],
+  "texto_traduzido": "",
+  "cena": [
+    {
+      "rotulo": "Building",
+      "rotulo_pt": "edifício",
+      "confianca": 99.9
+    },
+    {
+      "rotulo": "Prayer",
+      "rotulo_pt": "local de oração",
+      "confianca": 99.9
+    },
+    {
+      "rotulo": "Shrine",
+      "rotulo_pt": "santuário",
+      "confianca": 99.9
+    },
+    {
+      "rotulo": "Temple",
+      "rotulo_pt": "templo",
+      "confianca": 99.9
+    },
+    {
+      "rotulo": "Pillar",
+      "rotulo_pt": "pilar",
+      "confianca": 99.6
+    },
+    {
+      "rotulo": "Parthenon",
+      "rotulo_pt": "Partenon",
+      "confianca": 99.4
+    },
+    {
+      "rotulo": "Gate",
+      "rotulo_pt": "portão",
+      "confianca": 95.4
+    },
+    {
+      "rotulo": "Outdoors",
+      "rotulo_pt": "ao ar livre",
+      "confianca": 91.7
+    }
+  ],
+  "narracao": "Na imagem há: edifício, local de oração, santuário, templo, pilar, Partenon, portão, ao ar livre. Nenhum texto foi encontrado na imagem.",
+  "audios": {
+    "narracao_pt": "audios/a0781fbc8871489dacb706c8ddeda2b8/narracao_pt.mp3"
+  },
+  "arquivo_de_entrada": "sem_texto_monumento.jpg",
+  "tempo_total_segundos": 4.3
+}

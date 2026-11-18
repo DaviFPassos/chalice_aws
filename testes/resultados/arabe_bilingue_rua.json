@@ -1,0 +1,43 @@
+{
+  "id": "2b9469079cc94b31b92e86b5026b5f37",
+  "status": "concluido",
+  "imagem": "uploads/2b9469079cc94b31b92e86b5026b5f37.jpg",
+  "processado_em": "2026-11-18T01:51:11.690424+00:00",
+  "idioma_detectado": "ar",
+  "texto_original": "شارع التحرير\nTahrir Street",
+  "linhas": [
+    {
+      "texto": "شارع التحرير",
+      "confianca": 94.7
+    },
+    {
+      "texto": "Tahrir Street",
+      "confianca": 100.0
+    }
+  ],
+  "texto_traduzido": "Rua Tahrir\nRua Tahrer",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 98.3
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 98.3
+    },
+    {
+      "rotulo": "Text",
+      "rotulo_pt": "texto",
+      "confianca": 87.1
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, texto. Foi encontrado um texto em árabe. Em português, ele diz: Rua Tahrir\nRua Tahrer",
+  "audios": {
+    "narracao_pt": "audios/2b9469079cc94b31b92e86b5026b5f37/narracao_pt.mp3",
+    "pronuncia_original": "audios/2b9469079cc94b31b92e86b5026b5f37/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "arabe_bilingue_rua.jpg",
+  "tempo_total_segundos": 4.4
+}

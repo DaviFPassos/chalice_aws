@@ -1,0 +1,44 @@
+{
+  "id": "8bae0e9010a94b8f8bf4d43629475f6c",
+  "status": "concluido",
+  "imagem": "uploads/8bae0e9010a94b8f8bf4d43629475f6c.jpg",
+  "processado_em": "2026-11-18T01:51:17.473249+00:00",
+  "idioma_detectado": "ar",
+  "texto_original": "مخرج الطوارئ",
+  "linhas": [
+    {
+      "texto": "مخرج الطوارئ",
+      "confianca": 83.6
+    }
+  ],
+  "texto_traduzido": "Saída de emergência",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 100.0
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 100.0
+    },
+    {
+      "rotulo": "Road Sign",
+      "rotulo_pt": "sinal de trânsito",
+      "confianca": 89.8
+    },
+    {
+      "rotulo": "First Aid",
+      "rotulo_pt": "primeiros socorros",
+      "confianca": 77.7
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, sinal de trânsito, primeiros socorros. Foi encontrado um texto em árabe. Em português, ele diz: Saída de emergência",
+  "audios": {
+    "narracao_pt": "audios/8bae0e9010a94b8f8bf4d43629475f6c/narracao_pt.mp3",
+    "pronuncia_original": "audios/8bae0e9010a94b8f8bf4d43629475f6c/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "arabe_saida_emergencia.jpg",
+  "tempo_total_segundos": 4.4
+}

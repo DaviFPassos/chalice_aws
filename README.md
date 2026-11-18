@@ -228,8 +228,50 @@ gerados.
 
 ## Resultados
 
-_A preencher após os testes na AWS: tabela com imagem, idioma detectado, texto extraído,
-tradução e observações (acertos, erros e limites)._
+Teste na AWS em 18/11/2026 com as 12 imagens de exemplo de `testes/imagens/`. Respostas
+completas (JSON) e áudios (MP3) em [`testes/resultados/`](testes/resultados/).
+Reproduzir: `python scripts/testar_api.py $(chalice url)`.
+
+| Imagem | Texto extraído (Rekognition) | Tradução (Translate) | Avaliação |
+|---|---|---|---|
+| `alemao_saida_emergencia` | Notausgang | saída de emergência | ✅ |
+| `alemao_placa_rua` | Unter den Linden / Brandenburger Tor | Unter den Linden / Portão de Brandemburgo | ✅ nome da rua mantido |
+| `alemao_proibido_fumar` | Rauchen verboten / Bitte nicht rauchen | Proibido fumar / Por favor, não fume | ✅ |
+| `russo_metro` | Выход в город / Красная площадь | Saia para a cidade / Praça Vermelha | ⚠️ "Saia" (imperativo) em vez de "Saída" |
+| `russo_museu` | Государственный / исторический музей | Museu Histórico do Estado | ✅ linhas da mesma frase unidas |
+| `russo_cuidado_piso` | Скользкий пол | Piso escorregadio | ⚠️ "Осторожно!" não foi lido (ver abaixo) |
+| `arabe_saida_emergencia` | مخرج الطوارئ | Saída de emergência | ✅ |
+| `arabe_museu` | المتحف المصري | O Museu Egípcio | ✅ |
+| `arabe_proibido_fumar` | ممنوع التدخين | Proibido fumar | ✅ |
+| `arabe_bilingue_rua` | شارع التحرير / Tahrir Street | Rua Tahrir / Rua Tahrer | ✅ árabe correto; ⚠️ o trecho em inglês é traduzido como árabe |
+| `sem_texto_monumento` | (nenhum) | — | ✅ narração descreve a cena: edifício, templo, pilar, Partenon… |
+| `baixa_qualidade_alemao` | den Linden / Unter / Brandenburger Tor | den Linden / Abaixo / Portão de Brandemburgo | ⚠️ texto inclinado e desfocado é lido em pedaços |
+
+Tempo total por imagem (envio → resultado pronto): ~4 s; ~10 s na primeira chamada,
+quando a Lambda inicializa.
+
+**O que os testes revelaram e foi corrigido no código:**
+
+- **Árabe fora de ordem e com palavras cortadas.** O Rekognition devolvia cada pedaço
+  de palavra como uma linha, da esquerda para a direita: "مخرج الطوارئ" chegava como
+  "رئ / الطوا / مخرج" e era traduzido como "Veja / Altawa / ventilação". As letras
+  árabes que não se ligam à seguinte (ا د ر …) criam vãos que o Rekognition interpreta
+  como espaços. Agora as palavras árabes são remontadas pela posição na imagem, da
+  direita para a esquerda, e os pedaços são unidos por uma regra linguística
+  (`chalicelib/layout.py`). Resultado: as 4 placas em árabe passaram de erradas para
+  corretas.
+- **Rótulos da cena.** "Sign" (placa) era traduzido como "assine". Os rótulos comuns
+  agora têm tradução fixa (`chalicelib/rotulos.py`).
+- **Frase quebrada em duas linhas.** "Государственный / исторический музей" virava "De
+  propriedade do Estado / museu histórico"; linhas que continuam a frase agora são
+  traduzidas juntas.
+- **Símbolos soltos.** O "!" de um ícone era lido como texto e entrava na narração;
+  linhas sem letras agora são descartadas.
+
+**Limitações observadas:** palavras isoladas, sem contexto, podem ganhar outro sentido
+("Выход" → "Saia"); o Rekognition confundiu "Осторожно!" com letras latinas parecidas
+("OctopoXHO!", 21% de confiança), e o filtro de confiança o descartou; em fotos
+inclinadas e desfocadas, o texto é lido em pedaços.
 
 ## Vídeo de demonstração
 

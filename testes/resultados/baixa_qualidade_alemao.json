@@ -1,0 +1,52 @@
+{
+  "id": "b0ae07e3d7f74fa085dc4770cb19d2d6",
+  "status": "concluido",
+  "imagem": "uploads/b0ae07e3d7f74fa085dc4770cb19d2d6.jpg",
+  "processado_em": "2026-11-18T01:51:06.463985+00:00",
+  "idioma_detectado": "de",
+  "texto_original": "den Linden\nUnter\nBrandenburger Tor",
+  "linhas": [
+    {
+      "texto": "den Linden",
+      "confianca": 99.8
+    },
+    {
+      "texto": "Unter",
+      "confianca": 99.6
+    },
+    {
+      "texto": "Brandenburger Tor",
+      "confianca": 98.5
+    }
+  ],
+  "texto_traduzido": "den Linden\nAbaixo\nPortão de Brandemburgo",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 99.9
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 99.9
+    },
+    {
+      "rotulo": "Scoreboard",
+      "rotulo_pt": "painel",
+      "confianca": 95.8
+    },
+    {
+      "rotulo": "Text",
+      "rotulo_pt": "texto",
+      "confianca": 76.5
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, painel, texto. Foi encontrado um texto em alemão. Em português, ele diz: den Linden\nAbaixo\nPortão de Brandemburgo",
+  "audios": {
+    "narracao_pt": "audios/b0ae07e3d7f74fa085dc4770cb19d2d6/narracao_pt.mp3",
+    "pronuncia_original": "audios/b0ae07e3d7f74fa085dc4770cb19d2d6/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "baixa_qualidade_alemao.jpg",
+  "tempo_total_segundos": 10.4
+}

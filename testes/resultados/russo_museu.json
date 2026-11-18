@@ -1,0 +1,48 @@
+{
+  "id": "dbe90e8c8db14eaf96ea29fd5c01b950",
+  "status": "concluido",
+  "imagem": "uploads/dbe90e8c8db14eaf96ea29fd5c01b950.jpg",
+  "processado_em": "2026-11-18T01:49:14.191446+00:00",
+  "idioma_detectado": "ru",
+  "texto_original": "Государственный\nисторический музей",
+  "linhas": [
+    {
+      "texto": "Государственный",
+      "confianca": 89.8
+    },
+    {
+      "texto": "исторический музей",
+      "confianca": 94.2
+    }
+  ],
+  "texto_traduzido": "Museu Histórico do Estado",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 96.2
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 96.2
+    },
+    {
+      "rotulo": "Text",
+      "rotulo_pt": "texto",
+      "confianca": 88.8
+    },
+    {
+      "rotulo": "Plaque",
+      "rotulo_pt": "placa comemorativa",
+      "confianca": 80.7
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, texto, placa comemorativa. Foi encontrado um texto em russo. Em português, ele diz: Museu Histórico do Estado",
+  "audios": {
+    "narracao_pt": "audios/dbe90e8c8db14eaf96ea29fd5c01b950/narracao_pt.mp3",
+    "pronuncia_original": "audios/dbe90e8c8db14eaf96ea29fd5c01b950/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "russo_museu.jpg",
+  "tempo_total_segundos": 4.6
+}

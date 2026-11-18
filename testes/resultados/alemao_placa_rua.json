@@ -1,0 +1,43 @@
+{
+  "id": "e4e81b50035b40c9b6d5a7098c8076fe",
+  "status": "concluido",
+  "imagem": "uploads/e4e81b50035b40c9b6d5a7098c8076fe.jpg",
+  "processado_em": "2026-11-18T01:48:19.785409+00:00",
+  "idioma_detectado": "de",
+  "texto_original": "Unter den Linden\nBrandenburger Tor",
+  "linhas": [
+    {
+      "texto": "Unter den Linden",
+      "confianca": 98.7
+    },
+    {
+      "texto": "Brandenburger Tor",
+      "confianca": 96.9
+    }
+  ],
+  "texto_traduzido": "Unter den Linden\nPortão de Brandemburgo",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 98.4
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 98.4
+    },
+    {
+      "rotulo": "Text",
+      "rotulo_pt": "texto",
+      "confianca": 88.4
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, texto. Foi encontrado um texto em alemão. Em português, ele diz: Unter den Linden\nPortão de Brandemburgo",
+  "audios": {
+    "narracao_pt": "audios/e4e81b50035b40c9b6d5a7098c8076fe/narracao_pt.mp3",
+    "pronuncia_original": "audios/e4e81b50035b40c9b6d5a7098c8076fe/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "alemao_placa_rua.jpg",
+  "tempo_total_segundos": 9.6
+}

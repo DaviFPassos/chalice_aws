@@ -1,0 +1,44 @@
+{
+  "id": "3578b2202d44466c9435769e897f798c",
+  "status": "concluido",
+  "imagem": "uploads/3578b2202d44466c9435769e897f798c.jpg",
+  "processado_em": "2026-11-18T01:48:30.029847+00:00",
+  "idioma_detectado": "de",
+  "texto_original": "Notausgang",
+  "linhas": [
+    {
+      "texto": "Notausgang",
+      "confianca": 93.8
+    }
+  ],
+  "texto_traduzido": "saída de emergência",
+  "cena": [
+    {
+      "rotulo": "Sign",
+      "rotulo_pt": "placa",
+      "confianca": 100.0
+    },
+    {
+      "rotulo": "Symbol",
+      "rotulo_pt": "símbolo",
+      "confianca": 100.0
+    },
+    {
+      "rotulo": "Road Sign",
+      "rotulo_pt": "sinal de trânsito",
+      "confianca": 95.2
+    },
+    {
+      "rotulo": "First Aid",
+      "rotulo_pt": "primeiros socorros",
+      "confianca": 90.3
+    }
+  ],
+  "narracao": "Na imagem há: placa, símbolo, sinal de trânsito, primeiros socorros. Foi encontrado um texto em alemão. Em português, ele diz: saída de emergência",
+  "audios": {
+    "narracao_pt": "audios/3578b2202d44466c9435769e897f798c/narracao_pt.mp3",
+    "pronuncia_original": "audios/3578b2202d44466c9435769e897f798c/pronuncia_original.mp3"
+  },
+  "arquivo_de_entrada": "alemao_saida_emergencia.jpg",
+  "tempo_total_segundos": 3.9
+}
