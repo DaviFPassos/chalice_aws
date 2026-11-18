@@ -27,7 +27,8 @@ informação **falada em português**.
 
 ## Como funciona
 
-1. O usuário envia a foto pela página web ou pela API (`POST /imagens`).
+1. O usuário envia a foto pelo **front-end em React** (ou direto pela API, `POST /imagens`).
+   Fotos grandes de celular são reduzidas no navegador antes do envio.
 2. A imagem é gravada no **Amazon S3**, e o upload **dispara uma Lambda** (evento
    `s3:ObjectCreated`).
 3. A Lambda encadeia os serviços de IA:
@@ -37,7 +38,8 @@ informação **falada em português**.
    - **Translate** traduz o texto e a descrição da cena para o português;
    - **Polly** gera dois MP3: a **narração em português** (voz Camila) e a
      **pronúncia original** do texto (voz do idioma detectado: Vicki, Tatyana ou Zeina).
-4. O resultado (JSON + áudios) é salvo no S3 e consultado em `GET /imagens/{id}`.
+4. O resultado (JSON + áudios) é salvo no S3 e consultado em `GET /imagens/{id}`. O
+   front mostra o texto original, a tradução e os players de áudio.
 
 Exemplo de narração gerada:
 > "Na imagem há: monumento, arquitetura, céu. Foi encontrado um texto em alemão. Em
@@ -49,7 +51,10 @@ Diagrama, componentes, regiões e detalhes do encadeamento em
 [`docs/arquitetura.md`](docs/arquitetura.md).
 
 ```
-Usuário → API Gateway → Lambda (api_handler) → S3 uploads/
+Front React (GitHub Pages)
+   │ POST /imagens · GET /imagens/{id}
+   ▼
+API Gateway → Lambda (api_handler) → S3 uploads/
                                                   │ evento s3:ObjectCreated
                                                   ▼
                        Lambda (ao_enviar_imagem) → Rekognition → Translate → Polly
@@ -63,6 +68,12 @@ Usuário → API Gateway → Lambda (api_handler) → S3 uploads/
 ```
 .
 ├── app.py                       # rotas da API + handler do evento do S3
+├── frontend/                    # front-end em React (Vite), publicado no GitHub Pages
+│   ├── src/App.jsx              # tela principal: envio, etapas e resultado
+│   ├── src/api.js               # chamadas à API (envio e consulta do resultado)
+│   ├── src/imagem.js            # validação e redução da foto no navegador
+│   └── src/componentes/         # EnvioImagem, Etapas, Resultado
+├── .github/workflows/frontend.yml  # testa e publica o front no GitHub Pages
 ├── chalicelib/                  # módulos empacotados junto com a Lambda
 │   ├── pipeline.py              # encadeamento Rekognition → Translate → Polly
 │   ├── visao.py                 # Amazon Rekognition
@@ -72,8 +83,7 @@ Usuário → API Gateway → Lambda (api_handler) → S3 uploads/
 │   ├── cota.py                  # limites diário e mensal de envios (custo zero)
 │   ├── idiomas.py               # nomes dos idiomas e vozes do Polly
 │   ├── clientes.py              # clientes boto3 (por região)
-│   ├── config.py                # configurações e limites
-│   └── pagina.py                # página web da demonstração
+│   └── config.py                # configurações e limites
 ├── .chalice/
 │   ├── config.json              # app_name, variáveis de ambiente, timeouts
 │   └── policy-dev.json          # permissões IAM mínimas da Lambda
@@ -126,10 +136,28 @@ chalice url                # URL da API
 
 ## Execução
 
-**Página web:** abra no navegador a URL exibida por `chalice url`, escolha uma foto e
-clique em "Ler e traduzir".
+### Front-end (React)
 
-**API REST:**
+**Publicado:** https://davifpassos.github.io/chalice_aws/ (GitHub Pages, gratuito). Depois de
+um novo `chalice deploy`, a URL da API muda: abra o site uma vez com
+`?api=<URL de chalice url>` (fica salva no navegador) ou atualize a variável `API_URL` do
+repositório (*Settings → Secrets and variables → Actions → Variables*) e rode o workflow.
+Com a API fora do ar, o site mostra um aviso.
+
+**Local:**
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local     # preencha API_PROXY_TARGET com a URL da API (sem /api/)
+npm run dev                    # http://localhost:5173
+```
+
+O Vite repassa as chamadas `/api` para a API implantada, então não é preciso liberar CORS
+para `localhost`. Em produção, a API só aceita chamadas de navegador vindas do GitHub Pages
+(`CORS_ORIGIN` em `.chalice/config.json`).
+
+### API REST
 
 ```bash
 API=$(chalice url)
@@ -145,7 +173,7 @@ curl ${API}imagens/<id>
 
 | Método | Rota | Resposta |
 |---|---|---|
-| GET | `/` | Página web da aplicação |
+| GET | `/` | Status da API e link para o front-end |
 | POST | `/imagens` | `202` com o `id`; `400` se o formato for inválido ou a imagem passar de 5 MB; `429` se o limite diário/mensal foi atingido |
 | GET | `/imagens/{id}` | `202` processando · `200` resultado · `404` inexistente · `400` id inválido |
 
@@ -175,7 +203,8 @@ Os links dos áudios são temporários (1 hora). Logs: `chalice logs --name ao_e
 em `tests/conftest.py`.
 
 ```bash
-python -m pytest -v
+python -m pytest -v               # backend
+cd frontend && npm test           # front-end (Vitest): chamadas à API, cota, redução de imagem
 ```
 
 Cobrem: detecção do idioma pelo alfabeto (inclusive placas bilíngues), placas em alemão,
@@ -217,7 +246,7 @@ _Link do vídeo:_ a definir.
 - O bucket é **privado** e os objetos expiram em **7 dias**. Os áudios são entregues por
   URLs temporárias.
 - A API valida formato (assinatura JPEG/PNG) e tamanho (5 MB) antes de gravar no S3, e
-  não habilita CORS: só a própria página da aplicação a usa pelo navegador.
+  libera CORS só para o endereço do front-end no GitHub Pages (`CORS_ORIGIN`).
 - Erros de processamento retornam uma mensagem genérica; os detalhes (que podem conter
   ARNs e o ID da conta) ficam só no CloudWatch Logs.
 - A Lambda usa uma política IAM mínima (`.chalice/policy-dev.json`), sem permissões
