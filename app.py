@@ -1,125 +1,115 @@
-import gzip
-import json
-from urllib.parse import parse_qs
+"""Leitor de Placas com Voz — Trabalho IV.
 
-from chalice import Chalice, BadRequestError, NotFoundError, Response, CORSConfig
+Fluxo orientado a eventos:
+  1. POST /imagens salva a foto no S3 (prefixo uploads/).
+  2. O upload dispara a Lambda ``ao_enviar_imagem`` (evento s3:ObjectCreated).
+  3. A Lambda encadeia Rekognition -> Translate -> Polly e grava o resultado no S3.
+  4. GET /imagens/{id} devolve o resultado com links temporários para os áudios.
+"""
+import base64
+import binascii
+import logging
+import re
+import uuid
 
-app = Chalice(app_name='helloworld')
-app.debug = True
-app.api.binary_types.append('application/json')
+from chalice import BadRequestError, Chalice, NotFoundError, Response
 
-CITIES_TO_STATE = {
-    'seattle': 'WA',
-    'portland': 'OR',
+from chalicelib import armazenamento, clientes, config, pagina, pipeline
+
+app = Chalice(app_name='leitor-placas')
+app.log.setLevel(logging.INFO)
+
+ID_VALIDO = re.compile(r'^[0-9a-f]{32}$')
+ASSINATURAS = {
+    b'\xff\xd8\xff': 'jpg',
+    b'\x89PNG\r\n\x1a\n': 'png',
 }
 
-OBJECTS = {
-}
 
-_ALLOWED_ORIGINS = set([
-    'http://allowed1.example.com',
-    'http://allowed2.example.com',
-])
-
-cors_config = CORSConfig(
-    allow_origin='https://foo.example.com',
-    allow_headers=['X-Special-Header'],
-    max_age=600,
-    expose_headers=['X-Special-Header'],
-    allow_credentials=True
-)
+def _detectar_formato(dados):
+    for assinatura, extensao in ASSINATURAS.items():
+        if dados.startswith(assinatura):
+            return extensao
+    return None
 
 
-@app.route('/')
-def index():
-    return {'hello': 'world'}
-
-
-@app.route('/', methods=['POST'],
-           content_types=['application/x-www-form-urlencoded'])
-def index_form():
-    parsed = parse_qs(app.current_request.raw_body.decode())
-    return {
-        'states': parsed.get('states', [])
-    }
-
-
-@app.route('/cities/{city}')
-def state_of_city(city):
-    try:
-        return {'state': CITIES_TO_STATE[city]}
-    except KeyError:
-        raise BadRequestError("Unknown city '%s', valid choices are: %s" % (
-            city, ', '.join(CITIES_TO_STATE.keys())))
-
-
-@app.route('/resource/{value}', methods=['PUT'])
-def put_test(value):
-    return {"value": value}
-
-
-@app.route('/objects/{key}', methods=['GET', 'PUT'])
-def myobject(key):
-    request = app.current_request
-    if request.method == 'PUT':
-        OBJECTS[key] = request.json_body
-    elif request.method == 'GET':
+def _ler_imagem_da_requisicao(requisicao):
+    tipo = (requisicao.headers.get('content-type') or '').split(';')[0].strip().lower()
+    if tipo == 'application/json':
+        corpo = requisicao.json_body or {}
         try:
-            return {key: OBJECTS[key]}
-        except KeyError:
-            raise NotFoundError(key)
+            dados = base64.b64decode(corpo.get('imagem_base64', ''), validate=True)
+        except (binascii.Error, ValueError):
+            raise BadRequestError('Campo "imagem_base64" inválido.')
+    else:
+        dados = requisicao.raw_body or b''
+
+    if not dados:
+        raise BadRequestError('Envie uma imagem JPEG ou PNG.')
+    if len(dados) > config.TAMANHO_MAXIMO_BYTES:
+        raise BadRequestError('A imagem deve ter no máximo 5 MB.')
+    extensao = _detectar_formato(dados)
+    if extensao is None:
+        raise BadRequestError('Formato não suportado: envie JPEG ou PNG.')
+    return dados, extensao
 
 
-@app.route('/introspect')
-def introspect():
-    return app.current_request.to_dict()
+@app.route('/', methods=['GET'])
+def index():
+    return Response(body=pagina.HTML, status_code=200,
+                    headers={'Content-Type': 'text/html; charset=utf-8'})
 
 
-@app.route('/custom-response')
-def custom_response():
-    return Response(body='hello world!',
-                    status_code=200,
-                    headers={'Content-Type': 'text/plain'})
+@app.route('/imagens', methods=['POST'],
+           content_types=['image/jpeg', 'image/png', 'application/json'])
+def enviar_imagem():
+    dados, extensao = _ler_imagem_da_requisicao(app.current_request)
+    id_imagem = uuid.uuid4().hex
+    chave = armazenamento.chave_upload(id_imagem, extensao)
+    tipo = 'image/png' if extensao == 'png' else 'image/jpeg'
+    armazenamento.salvar(chave, dados, tipo)
+    return Response(
+        body={'id': id_imagem, 'status': 'processando',
+              'resultado': f'/imagens/{id_imagem}'},
+        status_code=202,
+    )
 
 
-@app.route('/gzip')
-def gzip_response():
-    blob = json.dumps({'hello': 'world'}).encode('utf-8')
-    payload = gzip.compress(blob)
-    custom_headers = {
-        'Content-Type': 'application/json',
-        'Content-Encoding': 'gzip'
-    }
-    return Response(body=payload,
-                    status_code=200,
-                    headers=custom_headers)
+@app.route('/imagens/{id_imagem}', methods=['GET'])
+def consultar_imagem(id_imagem):
+    if not ID_VALIDO.match(id_imagem):
+        raise BadRequestError('Identificador inválido.')
 
-
-@app.route('/supports-cors', methods=['PUT'], cors=True)
-def supports_cors():
-    return {}
-
-
-@app.route('/custom-cors', methods=['GET'], cors=cors_config)
-def supports_custom_cors():
-    return {'cors': True}
-
-
-@app.route('/cors_multiple_origins', methods=['GET', 'OPTIONS'])
-def supports_cors_multiple_origins():
-    method = app.current_request.method
-    if method == 'OPTIONS':
-        headers = {
-            'Access-Control-Allow-Method': 'GET,OPTIONS',
-            'Access-Control-Allow-Origin': ','.join(_ALLOWED_ORIGINS),
-            'Access-Control-Allow-Headers': 'X-Some-Header',
-        }
-        origin = app.current_request.headers.get('origin', '')
-        if origin in _ALLOWED_ORIGINS:
-            headers.update({'Access-Control-Allow-Origin': origin})
-        return Response(
-            body=None,
-            headers=headers,
+    resultado = armazenamento.ler_resultado(id_imagem)
+    if resultado is None:
+        enviados = clientes.obter('s3').list_objects_v2(
+            Bucket=config.BUCKET_NAME,
+            Prefix=f'{config.PREFIXO_UPLOADS}{id_imagem}.',
+            MaxKeys=1,
         )
-    elif method == 'GET':
-        return 'Foo'
+        if enviados.get('KeyCount', 0) == 0:
+            raise NotFoundError(f'Imagem {id_imagem} não encontrada.')
+        return Response(body={'id': id_imagem, 'status': 'processando'},
+                        status_code=202)
+
+    resultado['audios_url'] = {
+        nome: armazenamento.url_temporaria(chave)
+        for nome, chave in resultado.get('audios', {}).items()
+    }
+    return resultado
+
+
+@app.on_s3_event(bucket=config.BUCKET_NAME,
+                 events=['s3:ObjectCreated:*'],
+                 prefix=config.PREFIXO_UPLOADS)
+def ao_enviar_imagem(event):
+    app.log.info('Nova imagem: s3://%s/%s', event.bucket, event.key)
+    try:
+        resultado = pipeline.processar_imagem(event.key)
+        app.log.info('Concluído %s: idioma=%s, linhas=%d',
+                     resultado['id'], resultado['idioma_detectado'],
+                     len(resultado['linhas']))
+    except Exception as erro:  # noqa: BLE001 - registra qualquer falha para o cliente
+        app.log.exception('Falha ao processar %s', event.key)
+        # Não relança: evita que a Lambda assíncrona repita a cobrança dos serviços.
+        pipeline.registrar_erro(event.key, erro)

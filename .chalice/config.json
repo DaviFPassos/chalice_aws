@@ -1,9 +1,23 @@
 {
   "version": "2.0",
-  "app_name": "helloworld",
+  "app_name": "leitor-placas",
+  "environment_variables": {
+    "BUCKET_NAME": "leitor-placas-c68524",
+    "TRANSLATE_REGION": "us-east-1",
+    "POLLY_REGION": "us-east-1"
+  },
   "stages": {
     "dev": {
-      "api_gateway_stage": "api"
+      "api_gateway_stage": "api",
+      "autogen_policy": false,
+      "iam_policy_file": "policy-dev.json",
+      "lambda_timeout": 30,
+      "lambda_functions": {
+        "ao_enviar_imagem": {
+          "lambda_timeout": 60,
+          "lambda_memory_size": 512
+        }
+      }
     }
   }
 }
