@@ -52,7 +52,9 @@ Exemplo real de narração (`testes/imagens/arabe_saida_emergencia.jpg`):
 
 ## Arquitetura
 
-Diagrama, componentes, regiões e detalhes do encadeamento em
+![Arquitetura do Leitor de Placas com Voz na AWS](docs/arquitetura.png)
+
+Componentes, responsabilidades, serviços de IA, regiões e fluxo de dados em
 [`docs/arquitetura.md`](docs/arquitetura.md).
 
 ```
@@ -101,6 +103,7 @@ API Gateway ──► Lambda api_handler ──► S3  uploads/{id}.jpg
 │   ├── limitar_api.sh           # limita a taxa de requisições da API Gateway
 │   ├── testar_api.py            # envia imagens à API implantada e salva os resultados
 │   ├── gerar_imagens_exemplo.py # gera as placas de exemplo em testes/imagens/
+│   ├── gerar_diagrama_arquitetura.py # gera docs/arquitetura.png com os ícones oficiais
 │   └── remover_tudo.sh          # remove a aplicação, o bucket, os logs e o código da AWS
 ├── tests/                       # testes automatizados do backend (pytest, sem AWS)
 ├── testes/
@@ -108,6 +111,7 @@ API Gateway ──► Lambda api_handler ──► S3  uploads/{id}.jpg
 │   └── resultados/              # JSON e MP3 produzidos pela aplicação na AWS
 ├── docs/
 │   ├── arquitetura.md           # projeto de arquitetura
+│   ├── arquitetura.png          # diagrama com os ícones oficiais da AWS
 │   └── custos.md                # levantamento de custos e limites de uso
 ├── requirements.txt             # dependências da Lambda (boto3 recente)
 └── requirements-dev.txt         # dependências de desenvolvimento

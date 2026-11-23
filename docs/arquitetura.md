@@ -1,10 +1,16 @@
 # Arquitetura — Leitor de Placas com Voz
 
-> **Pendente:** exportar o diagrama com os **ícones oficiais da AWS** (exigência do roteiro)
-> para `docs/arquitetura.png`, por exemplo no [draw.io](https://app.diagrams.net/) com a
-> biblioteca *AWS Architecture Icons* ou a partir do pacote oficial em
-> <https://aws.amazon.com/architecture/icons/>. O diagrama abaixo mostra o mesmo fluxo e
-> serve de referência para desenhá-lo.
+![Arquitetura do Leitor de Placas com Voz na AWS](arquitetura.png)
+
+Diagrama com os **ícones oficiais da AWS** (AWS Architecture Icons), gerado por
+`scripts/gerar_diagrama_arquitetura.py` a partir do pacote oficial
+(<https://aws.amazon.com/architecture/icons/>):
+
+```bash
+python scripts/gerar_diagrama_arquitetura.py ~/Downloads/Icon-package_07312026.zip
+```
+
+O mesmo fluxo em texto (Mermaid), útil para revisar mudanças:
 
 ```mermaid
 flowchart LR
